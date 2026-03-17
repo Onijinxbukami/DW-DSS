@@ -2,3 +2,5 @@ _bmad*
 .claude
 requirements.txt
 docs
+*.db
+data/
