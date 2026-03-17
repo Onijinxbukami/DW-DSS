@@ -1,0 +1,2 @@
+config_id,effective_date,alpha_num_overdue_6m,beta_max_dpd_6m,gamma_dpd_current,delta_amount_band,epsilon_product_source_mortgage,description
+1,2024-12-31,20,25,0.5,10,5,Default scoring config v1 for collection DSS

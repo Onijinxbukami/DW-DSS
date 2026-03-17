@@ -1,0 +1,7 @@
+branch_id,branch_code_clean,branch_name,city,region
+1,BR-HCM01,Chi nhánh Quận 1,TP.HCM,South
+2,BR-HCM02,Chi nhánh Quận 3,TP.HCM,South
+3,BR-HN01,Chi nhánh Hoàn Kiếm,Ha Noi,North
+4,BR-DN01,Chi nhánh Hải Châu,Da Nang,Central
+5,BR-CT01,Chi nhánh Ninh Kiều,Can Tho,South
+6,BR-HP01,Chi nhánh Lê Chân,Hai Phong,North

@@ -1,0 +1,43 @@
+/* DSS Thu Hồi Nợ – Custom styles */
+
+body {
+  background-color: #f8f9fa;
+  font-size: 0.9rem;
+}
+
+.navbar-brand {
+  letter-spacing: 0.02em;
+}
+
+.card {
+  border-radius: 0.75rem;
+}
+
+.table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.badge {
+  font-size: 0.75rem;
+}
+
+code {
+  font-size: 0.8rem;
+  color: #6f42c1;
+}
+
+.status-select {
+  min-width: 130px;
+}
+
+/* Priority rank number styling */
+td:first-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Highlight overdue rows */
+.table-danger td { color: #842029; }
+.table-warning td { color: #664d03; }

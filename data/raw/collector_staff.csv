@@ -1,0 +1,21 @@
+collector_staff_id,collector_code,collector_name,team,branch_code_raw,max_daily_cases,email,phone,is_active
+1,COL-001,Bui Thu Linh,EMAIL_SMS,BR-DN01,60,bui.thu.linh@banka.com.vn,0879218402,1
+2,COL-002,Nguyen Thi Trang,EMAIL_SMS,BR-CT01,60,nguyen.thi.trang@banka.com.vn,0817309270,1
+3,COL-003,Dang Quang Chau,EMAIL_SMS,Ho Chi Minh Q3,60,dang.quang.chau@banka.com.vn,0674255983,1
+4,COL-004,Vo Thi Huy,CALL,CN-HCM-02,40,vo.thi.huy@banka.com.vn,0883071157,1
+5,COL-005,Pham Quang Thao,FIELD,CN-HCM-01,15,pham.quang.thao@banka.com.vn,0646919227,1
+6,COL-006,Tran Thu Trang,EMAIL_SMS,Ho Chi Minh Q1,60,tran.thu.trang@banka.com.vn,0664494500,1
+7,COL-007,Huynh Thanh Dung,EMAIL_SMS,DN-01,60,huynh.thanh.dung@banka.com.vn,0743307302,1
+8,COL-008,Tran Duc Dung,FIELD,HP-01,15,tran.duc.dung@banka.com.vn,0585175516,1
+9,COL-009,Dang Thanh Chau,EMAIL_SMS,HA_NOI_CN1,60,dang.thanh.chau@banka.com.vn,0623514027,1
+10,COL-010,Bui Van Hieu,FIELD,HA_NOI_CN1,15,bui.van.hieu@banka.com.vn,0950378435,1
+11,COL-011,Dang Van Khanh,CALL,BR-CT01,40,dang.van.khanh@banka.com.vn,0941493507,1
+12,COL-012,Phan Minh Hieu,CALL,BR-HCM01,40,phan.minh.hieu@banka.com.vn,0461146762,1
+13,COL-013,Phan Ngoc Khoa,FIELD,HN-01,15,phan.ngoc.khoa@banka.com.vn,0851825509,1
+14,COL-014,Nguyen Thi Binh,CALL,CN-HCM-02,40,nguyen.thi.binh@banka.com.vn,0426241616,1
+15,COL-015,Bui Hai Trang,CALL,Ha Noi CN1,40,bui.hai.trang@banka.com.vn,0364409783,1
+16,COL-016,Vo Duc Tuan,EMAIL_SMS,HN-01,60,vo.duc.tuan@banka.com.vn,0716279435,1
+17,COL-017,Phan Duc Binh,EMAIL_SMS,Ho Chi Minh Q1,60,phan.duc.binh@banka.com.vn,0780472592,1
+18,COL-018,Hoang Anh Vy,CALL,Ho Chi Minh Q1,40,hoang.anh.vy@banka.com.vn,0320034286,1
+19,COL-019,Nguyen Quang Tuan,EMAIL_SMS,Hai Phong CN1,60,nguyen.quang.tuan@banka.com.vn,0410188819,1
+20,COL-020,Tran Thu Linh,EMAIL_SMS,HAI_PHONG_1,60,tran.thu.linh@banka.com.vn,0983195308,1

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}What-If Analysis – Quản Lý{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h5 class="fw-bold mb-3">
+  <i class="bi bi-sliders text-primary"></i> What-If Analysis – Điều Chỉnh Trọng Số Model
+</h5>
+
+<div class="row g-4">
+  <!-- Left Panel: Weight Sliders -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-toggles"></i> Trọng Số Model 2
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Config hiện tại: <strong>#{{ current_weights.config_id }}</strong>
+          ({{ current_weights.effective_date }})
+        </p>
+
+        {% set params = [
+          ('alpha',   'α – Số kỳ trễ 6T',    'num_overdue_6m',  0, 50, 1),
+          ('beta',    'β – Max DPD 6T',       'max_dpd_6m',      0, 50, 1),
+          ('gamma',   'γ – DPD hiện tại',     'dpd_current',     0, 5,  0.1),
+          ('delta',   'δ – Bậc dư nợ',        'amount_band',     0, 30, 1),
+          ('epsilon', 'ε – Nguồn sản phẩm',   'product_source',  0, 20, 1),
+        ] %}
+
+        {% for key, label, hint, mn, mx, step in params %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">
+            {{ label }}
+            <span class="text-muted">(hiện tại: {{ current_weights[key] }})</span>
+          </label>
+          <div class="d-flex align-items-center gap-2">
+            <input type="range" class="form-range flex-grow-1"
+                   id="slider-{{ key }}"
+                   min="{{ mn }}" max="{{ mx }}" step="{{ step }}"
+                   value="{{ current_weights[key] }}"
+                   oninput="syncInput('{{ key }}')">
+            <input type="number" class="form-control form-control-sm"
+                   id="input-{{ key }}" style="width:70px"
+                   min="{{ mn }}" max="{{ mx }}" step="{{ step }}"
+                   value="{{ current_weights[key] }}"
+                   oninput="syncSlider('{{ key }}')">
+          </div>
+        </div>
+        {% endfor %}
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold small">Ghi chú</label>
+          <input type="text" class="form-control form-control-sm" id="desc-input"
+                 placeholder="Mô tả thay đổi (tùy chọn)">
+        </div>
+
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary" id="preview-btn" onclick="previewWhatIf()">
+            <i class="bi bi-eye"></i> Xem Preview
+          </button>
+          <button class="btn btn-danger fw-bold" id="apply-btn" onclick="applyConfig()" disabled>
+            <i class="bi bi-check-circle"></i> Áp Dụng Cho Hôm Nay
+          </button>
+        </div>
+        <div id="apply-result" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Preview Results -->
+  <div class="col-md-8">
+    <!-- Stats Summary -->
+    <div class="row g-2 mb-3" id="summary-stats" style="display:none!important">
+      <div class="col-4">
+        <div class="card border-warning text-center py-2">
+          <div class="fs-4 fw-bold text-warning" id="stat-rank-changes">–</div>
+          <div class="small text-muted">Task đổi thứ hạng</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histogram -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-bar-chart text-primary"></i> Phân Bố Risk Score (Trước / Sau)
+      </div>
+      <div class="card-body">
+        <canvas id="histChart" height="120"></canvas>
+        <p class="text-muted small text-center mt-1" id="no-preview-msg">
+          Nhấn "Xem Preview" để so sánh
+        </p>
+      </div>
+    </div>
+
+    <!-- Top 20 Table -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-trophy text-primary"></i> Top 20 Khoản Ưu Tiên Cao Nhất (So Sánh)
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" id="compare-table">
+            <thead class="table-light">
+              <tr>
+                <th>Khách hàng</th>
+                <th>Hợp đồng</th>
+                <th class="text-center">DPD</th>
+                <th class="text-end">Score cũ</th>
+                <th class="text-center">Hạng cũ</th>
+                <th class="text-end">Score mới</th>
+                <th class="text-center">Hạng mới</th>
+                <th class="text-center">Thay đổi</th>
+              </tr>
+            </thead>
+            <tbody id="compare-tbody">
+              <tr><td colspan="8" class="text-center text-muted py-3">Nhấn "Xem Preview" để xem kết quả</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/whatif.js') }}"></script>
+{% endblock %}

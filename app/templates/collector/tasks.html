@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Task Hôm Nay – {{ session.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0 fw-bold">
+      <i class="bi bi-list-task text-primary"></i>
+      Xin chào, <span class="text-primary">{{ session.name }}</span>
+    </h5>
+    <small class="text-muted">Ngày: 2024-12-31 | Team: {{ tasks[0].assigned_channel if tasks else '–' }}</small>
+  </div>
+  <span class="badge bg-primary fs-6">{{ tasks | length }} task hôm nay</span>
+</div>
+
+{% if not tasks %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Không có task nào được giao cho bạn hôm nay.
+  </div>
+{% else %}
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle" id="tasks-table">
+    <thead class="table-primary">
+      <tr>
+        <th>#</th>
+        <th>Khách hàng</th>
+        <th>SĐT</th>
+        <th>Hợp đồng</th>
+        <th>Sản phẩm</th>
+        <th>DPD</th>
+        <th>Dư nợ (VNĐ)</th>
+        <th>Kênh</th>
+        <th>Risk Score</th>
+        <th>Trạng thái</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr class="
+        {% if t.dpd_current >= 30 %}table-danger
+        {% elif t.dpd_current >= 20 %}table-warning
+        {% elif t.dpd_current >= 10 %}table-info
+        {% else %}{% endif %}
+      ">
+        <td class="fw-bold text-muted">{{ t.priority_rank }}</td>
+        <td>{{ t.customer_name }}</td>
+        <td><a href="tel:{{ t.phone }}">{{ t.phone }}</a></td>
+        <td><code>{{ t.contract_no }}</code></td>
+        <td>
+          <span class="badge {% if t.product_source == 'COREBANK' %}bg-success{% else %}bg-info text-dark{% endif %}">
+            {{ t.product_source }}
+          </span>
+          {{ t.product_code }}
+        </td>
+        <td>
+          <span class="badge
+            {% if t.dpd_current >= 30 %}bg-danger
+            {% elif t.dpd_current >= 20 %}bg-warning text-dark
+            {% elif t.dpd_current >= 10 %}bg-info text-dark
+            {% elif t.dpd_current > 0 %}bg-secondary
+            {% else %}bg-success{% endif %}">
+            {{ t.dpd_current }} ngày
+          </span>
+        </td>
+        <td class="text-end">{{ "{:,.0f}".format(t.total_outstanding) }}</td>
+        <td>
+          {% set channel_icons = {'EMAIL': 'bi-envelope', 'SMS': 'bi-chat-text', 'CALL': 'bi-telephone', 'FIELD': 'bi-geo-alt'} %}
+          <i class="bi {{ channel_icons.get(t.assigned_channel, 'bi-question') }}"></i>
+          {{ t.assigned_channel }}
+        </td>
+        <td class="fw-bold text-danger">{{ "%.1f"|format(t.risk_score) }}</td>
+        <td>
+          <select class="form-select form-select-sm status-select"
+                  data-task-id="{{ t.task_id }}"
+                  onchange="updateStatus({{ t.task_id }}, this.value)">
+            <option value="PENDING"     {% if t.task_status == 'PENDING'     %}selected{% endif %}>⏳ Chờ</option>
+            <option value="IN_PROGRESS" {% if t.task_status == 'IN_PROGRESS' %}selected{% endif %}>🔄 Đang xử lý</option>
+            <option value="DONE"        {% if t.task_status == 'DONE'        %}selected{% endif %}>✅ Xong</option>
+            <option value="SKIPPED"     {% if t.task_status == 'SKIPPED'     %}selected{% endif %}>⏭ Bỏ qua</option>
+          </select>
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary"
+                  onclick="showDetail({{ t.task_id }})">
+            <i class="bi bi-eye"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-lines-fill"></i> Chi Tiết Khách Hàng</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detail-body">
+        <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/collector.js') }}"></script>
+{% endblock %}
