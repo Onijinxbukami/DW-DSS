@@ -51,17 +51,32 @@ def task_detail(task_id):
         return jsonify({"error": "Not found"}), 404
 
     # Last 6 installments for this customer + contract
-    history = conn.execute(
-        """SELECT d.full_date AS due_date, f.amount_due, f.amount_paid,
-                  f.dpd, f.status
-           FROM fact_debt_installment f
-           JOIN dim_date d ON f.due_date_sk = d.date_sk
-           WHERE f.customer_sk = ? AND f.contract_no = ?
-             AND f.due_date_sk >= 20240630
-           ORDER BY f.due_date_sk DESC
-           LIMIT 6""",
-        (task["customer_sk"], task["contract_no"])
-    ).fetchall()
+    # Use pre-computed fact_history_6m if available (Vercel deploy.db),
+    # otherwise fall back to the full fact table.
+    tables = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).fetchall()}
+    if "fact_history_6m" in tables:
+        history = conn.execute(
+            """SELECT due_date, amount_due, amount_paid, dpd, status
+               FROM fact_history_6m
+               WHERE customer_sk = ? AND contract_no = ?
+               ORDER BY due_date DESC
+               LIMIT 6""",
+            (task["customer_sk"], task["contract_no"])
+        ).fetchall()
+    else:
+        history = conn.execute(
+            """SELECT d.full_date AS due_date, f.amount_due, f.amount_paid,
+                      f.dpd, f.status
+               FROM fact_debt_installment f
+               JOIN dim_date d ON f.due_date_sk = d.date_sk
+               WHERE f.customer_sk = ? AND f.contract_no = ?
+                 AND f.due_date_sk >= 20240630
+               ORDER BY f.due_date_sk DESC
+               LIMIT 6""",
+            (task["customer_sk"], task["contract_no"])
+        ).fetchall()
     conn.close()
 
     history_list = [dict(h) for h in history]

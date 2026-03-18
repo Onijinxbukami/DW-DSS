@@ -177,8 +177,6 @@ def whatif_preview():
 @manager_bp.route("/whatif/apply", methods=["POST"])
 @login_required(role="manager")
 def whatif_apply():
-    from mart.build_mart import build_mart
-
     data = request.get_json()
     alpha   = float(data.get("alpha",   20))
     beta    = float(data.get("beta",    25))
@@ -186,6 +184,8 @@ def whatif_apply():
     delta   = float(data.get("delta",   10))
     epsilon = float(data.get("epsilon", 5))
     desc    = data.get("description", "Applied via What-If UI")
+    new_weights = {"alpha": alpha, "beta": beta, "gamma": gamma,
+                   "delta": delta, "epsilon": epsilon}
 
     conn = get_db()
     conn.execute(
@@ -194,18 +194,33 @@ def whatif_apply():
             gamma_dpd_current, delta_amount_band,
             epsilon_product_source_mortgage, applied_by, description)
            VALUES (datetime('now'), ?,?,?,?,?,?,?)""",
-        (alpha, beta, gamma, delta, epsilon, session.get("name","manager"), desc)
+        (alpha, beta, gamma, delta, epsilon, session.get("name", "manager"), desc)
     )
     conn.commit()
     new_config_id = conn.execute(
         "SELECT MAX(config_id) FROM scoring_config"
     ).fetchone()[0]
 
-    n = build_mart(SNAPSHOT_DATE, conn)
-    conn.close()
+    # Re-score existing mart tasks in-place using new weights.
+    # num_overdue_6m / max_dpd_6m / total_outstanding are already stored in
+    # dm_daily_collection_tasks so no fact table access is needed.
+    tasks = pd.read_sql_query(
+        "SELECT * FROM dm_daily_collection_tasks WHERE snapshot_date = ?",
+        conn, params=(SNAPSHOT_DATE,)
+    )
+    if not tasks.empty:
+        tasks = compute_risk_scores(tasks, new_weights)
+        conn.executemany(
+            "UPDATE dm_daily_collection_tasks "
+            "SET risk_score=?, priority_rank=?, config_id=? WHERE task_id=?",
+            [
+                (float(r["risk_score"]), int(r["priority_rank"]),
+                 new_config_id, int(r["task_id"]))
+                for _, r in tasks.iterrows()
+            ],
+        )
+        conn.commit()
 
-    return jsonify({
-        "success":      True,
-        "config_id":    new_config_id,
-        "tasks_updated": n,
-    })
+    n = len(tasks)
+    conn.close()
+    return jsonify({"success": True, "config_id": new_config_id, "tasks_updated": n})
