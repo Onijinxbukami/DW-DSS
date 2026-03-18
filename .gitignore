@@ -1,6 +1,7 @@
 _bmad*
 .claude
-requirements.txt
 docs
 *.db
 data/
+__pycache__/
+*.pyc
