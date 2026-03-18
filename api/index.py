@@ -5,8 +5,13 @@ Vercel routes all HTTP requests here via vercel.json.
 import sys
 import os
 
-# Ensure project root is on the Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path so all imports (app, models, config) resolve correctly.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+# Ensure VERCEL flag is set so app/db.py copies deploy.db → /tmp
+os.environ.setdefault("VERCEL", "1")
 
 from app import create_app
 
