@@ -67,7 +67,7 @@ WHERE f.dpd > 0
 def build_mart(snapshot_date: str | None = None, conn=None):
     """
     snapshot_date: 'YYYY-MM-DD' string; defaults to today.
-    conn: existing sqlite3 connection (reused by Flask); if None, opens a new one.
+    conn: existing PgConn (reused by Flask); if None, opens a new one.
     """
     close_conn = False
     if conn is None:
@@ -88,8 +88,8 @@ def build_mart(snapshot_date: str | None = None, conn=None):
     config_id = cfg["config_id"]
     weights   = weights_from_config(cfg)
 
-    # 2. Load current overdue tasks
-    tasks_df = pd.read_sql_query(_CURRENT_TASKS_SQL, conn)
+    # 2. Load current overdue tasks (use conn.raw for pandas)
+    tasks_df = pd.read_sql_query(_CURRENT_TASKS_SQL, conn.raw)
     if tasks_df.empty:
         print("  No overdue tasks found.")
         if close_conn:
@@ -97,7 +97,7 @@ def build_mart(snapshot_date: str | None = None, conn=None):
         return 0
 
     # 3. Load 6-month behavior
-    behavior_df = pd.read_sql_query(_BEHAVIOR_SQL, conn)
+    behavior_df = pd.read_sql_query(_BEHAVIOR_SQL, conn.raw)
 
     # 4. Merge
     tasks_df = tasks_df.merge(
@@ -108,10 +108,9 @@ def build_mart(snapshot_date: str | None = None, conn=None):
 
     # 5. Model 1 – channel assignment
     channels = tasks_df["dpd_current"].apply(assign_channel)
-    tasks_df["dpd_bucket"]      = channels.apply(lambda x: x[0])
-    tasks_df["assigned_channel"]= channels.apply(lambda x: x[1])
+    tasks_df["dpd_bucket"]       = channels.apply(lambda x: x[0])
+    tasks_df["assigned_channel"] = channels.apply(lambda x: x[1])
 
-    # Keep only actionable tasks (dpd_bucket != ON_TIME)
     tasks_df = tasks_df[tasks_df["dpd_bucket"] != "ON_TIME"].copy()
 
     # 6. Model 2 – risk score
@@ -121,13 +120,13 @@ def build_mart(snapshot_date: str | None = None, conn=None):
     collectors_df = pd.read_sql_query(
         "SELECT collector_sk, collector_name, team, branch_sk, max_daily_cases, is_active "
         "FROM dim_collector",
-        conn
+        conn.raw
     )
     tasks_df = assign_collectors(tasks_df, collectors_df)
 
     # 8. Delete existing rows for this snapshot date
     conn.execute(
-        "DELETE FROM dm_daily_collection_tasks WHERE snapshot_date = ?",
+        "DELETE FROM dm_daily_collection_tasks WHERE snapshot_date = %s",
         (snapshot_date,)
     )
 
@@ -169,7 +168,7 @@ def build_mart(snapshot_date: str | None = None, conn=None):
             dpd_bucket, assigned_channel, num_overdue_6m, max_dpd_6m,
             risk_score, priority_rank, collector_sk, collector_name,
             task_status, config_id)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
         insert_rows
     )
     conn.commit()

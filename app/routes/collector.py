@@ -13,7 +13,7 @@ def tasks():
     conn = get_db()
     tasks = conn.execute(
         """SELECT * FROM dm_daily_collection_tasks
-           WHERE collector_sk = ? AND snapshot_date = ?
+           WHERE collector_sk = %s AND snapshot_date = %s
            ORDER BY priority_rank ASC""",
         (collector_sk, SNAPSHOT_DATE)
     ).fetchall()
@@ -31,7 +31,7 @@ def update_status():
         return jsonify({"success": False, "error": "Invalid status"}), 400
     conn = get_db()
     conn.execute(
-        "UPDATE dm_daily_collection_tasks SET task_status = ? WHERE task_id = ?",
+        "UPDATE dm_daily_collection_tasks SET task_status = %s WHERE task_id = %s",
         (new_status, task_id)
     )
     conn.commit()
@@ -44,7 +44,7 @@ def update_status():
 def task_detail(task_id):
     conn = get_db()
     task = conn.execute(
-        "SELECT * FROM dm_daily_collection_tasks WHERE task_id = ?",
+        "SELECT * FROM dm_daily_collection_tasks WHERE task_id = %s",
         (task_id,)
     ).fetchone()
     if task is None:
@@ -56,7 +56,7 @@ def task_detail(task_id):
                   f.dpd, f.status
            FROM fact_debt_installment f
            JOIN dim_date d ON f.due_date_sk = d.date_sk
-           WHERE f.customer_sk = ? AND f.contract_no = ?
+           WHERE f.customer_sk = %s AND f.contract_no = %s
              AND f.due_date_sk >= 20240630
            ORDER BY f.due_date_sk DESC
            LIMIT 6""",
