@@ -1,49 +1,57 @@
 # DSS Thu Hồi Nợ – Ngân Hàng A
 **CO5113 – Data Warehousing & Decision Support Systems | HCMUT**
 
-A Compound DSS (Data-driven + Model-driven) for bank debt recovery, built with Python, SQLite, and Flask.
+Hệ thống **Compound DSS** (Data-driven + Model-driven) hỗ trợ quy trình thu hồi nợ tại ngân hàng giả lập Việt Nam. Được xây dựng bằng Python, PostgreSQL (Supabase) và Flask.
 
 ---
 
 ## Quick Start
 
-### 1. Install dependencies
+### 1. Cài đặt dependencies
 ```bash
-pip install flask pandas python-dateutil
+pip install -r requirements.txt
 ```
 
-### 2. Run ETL (build the Star Schema database)
+### 2. Cấu hình database
+Tạo file `.env` từ `.env.example` và điền thông tin Supabase:
+```
+DATABASE_URL=postgresql://postgres@db.YOUR-REF.supabase.co:5432/postgres
+DB_PASSWORD=your-password
+SECRET_KEY=your-secret-key
+```
+
+### 3. Chạy ETL (tạo Star Schema)
 ```bash
 python etl/run_etl.py
 ```
-This takes ~2 minutes and creates `database.db` with 800K+ fact rows.
+Tạo ~800K+ fact rows trong PostgreSQL.
 
-### 3. Build the Data Mart
+### 4. Build Data Mart
 ```bash
 python mart/build_mart.py 2024-12-31
 ```
-Populates `dm_daily_collection_tasks` (~12,000 tasks).
+Tạo ~12,000 task trong `dm_daily_collection_tasks`.
 
-### 4. Start the Web Application
+### 5. Khởi động Web App
 ```bash
 python run.py
 ```
-Open **http://localhost:5000** in your browser.
+Mở **http://localhost:5000** trên trình duyệt.
 
 ---
 
-## Login Accounts
+## Tài Khoản Đăng Nhập
 
 ### Manager
-| Username | Password | Role |
-|----------|----------|------|
-| `manager` | `admin123` | Manager |
+| Username | Password | Vai trò |
+|----------|----------|---------|
+| `manager` | `admin123` | Quản lý |
 
-> Manager can view the Dashboard, run What-If Analysis, and apply new scoring configs.
+> Manager có thể xem Dashboard, chạy What-If Analysis và áp dụng config mới.
 
 ### Collectors
-| Username | Password | Name |
-|----------|----------|------|
+| Username | Password | Tên |
+|----------|----------|-----|
 | `COL-001` | `col001` | Bui Thu Linh |
 | `COL-002` | `col002` | Nguyen Thi Trang |
 | `COL-003` | `col003` | Dang Quang Chau |
@@ -65,39 +73,39 @@ Open **http://localhost:5000** in your browser.
 | `COL-019` | `col019` | Nguyen Quang Tuan |
 | `COL-020` | `col020` | Tran Thu Linh |
 
-> Pattern: username = `COL-XXX`, password = `colXXX`
+> Quy tắc: username = `COL-XXX`, password = `colXXX`
 
 ---
 
-## Project Structure
+## Cấu Trúc Dự Án
 
 ```
 source/
-├── config.py                # Centralized config (paths, constants)
-├── run.py                   # App entry point
+├── config.py                # Cấu hình tập trung (đường dẫn, hằng số)
+├── run.py                   # Entry point ứng dụng
 ├── requirements.txt
+├── vercel.json              # Cấu hình deploy Vercel
 ├── data/
-│   ├── raw/                 # All 12 raw CSV files
-│   └── database.db          # SQLite DB (generated after ETL)
+│   └── raw/                 # 12 file CSV nguồn
 ├── etl/
 │   ├── utils.py             # parse_dirty_date, RAW_TO_CLEAN, clean_branch
 │   ├── load_dimensions.py   # Load 5 dim tables + scoring_config
 │   ├── load_fact.py         # Load fact_debt_installment
-│   └── run_etl.py           # ETL orchestrator (run this first)
+│   └── run_etl.py           # ETL orchestrator
 ├── models/
-│   ├── helpers.py           # Pure math helpers (normalize, amount_band, source_flag)
-│   ├── model1_channel.py    # DPD → dpd_bucket + assigned_channel
-│   ├── model2_risk_score.py # Weighted risk score formula
-│   └── assign_collectors.py # Round-robin collector assignment
+│   ├── helpers.py           # Hàm toán học (normalize, amount_band, source_flag)
+│   ├── model1_channel.py    # Model 1: DPD → dpd_bucket + assigned_channel
+│   ├── model2_risk_score.py # Model 2: Công thức risk score
+│   └── assign_collectors.py # Phân công collector round-robin
 ├── mart/
 │   └── build_mart.py        # Build dm_daily_collection_tasks
 └── app/
     ├── __init__.py          # Flask app factory
-    ├── db.py                # Unified SQLite connection helper
-    ├── auth.py              # Login / session / role guard
+    ├── db.py                # PostgreSQL connection wrapper
+    ├── auth.py              # Đăng nhập / session / phân quyền
     ├── routes/
-    │   ├── collector.py     # Collector routes
-    │   └── manager.py       # Manager routes (dashboard, what-if)
+    │   ├── collector.py     # Routes cho Collector
+    │   └── manager.py       # Routes cho Manager (dashboard, what-if)
     ├── templates/
     │   ├── base.html
     │   ├── login.html
@@ -106,19 +114,19 @@ source/
     └── static/
         ├── css/style.css
         └── js/
-            ├── collector.js  # Collector page JS
-            ├── dashboard.js  # Dashboard charts JS
-            └── whatif.js     # What-If analysis JS
+            ├── collector.js
+            ├── dashboard.js
+            └── whatif.js
 ```
 
 ---
 
-## Pipeline Overview
+## Pipeline Tổng Thể
 
 ```
-12 CSV files (raw)
+12 file CSV (raw)
     └─► ETL (etl/run_etl.py)
-            └─► Star Schema in database.db
+            └─► Star Schema (PostgreSQL)
                     ├── dim_customer, dim_product, dim_branch
                     ├── dim_collector, dim_date
                     └── fact_debt_installment (~812K rows)
@@ -132,143 +140,371 @@ source/
 
 ---
 
-## Web App Pages
+## Các Trang Web
 
-| Role | URL | Description |
-|------|-----|-------------|
-| Both | `/login` | Login page |
-| Collector | `/collector/tasks` | Today's task list, sorted by priority |
-| Manager | `/manager/dashboard` | KPI cards + DPD/channel charts + collector performance |
-| Manager | `/manager/whatif` | Adjust model weights, preview impact, apply config |
-
----
-
-## UI Guide
-
-### Login
-1. Open **http://localhost:5000** — you are redirected to `/login`.
-2. Enter username and password from the accounts table above.
-3. Collectors are redirected to their task list; the Manager is redirected to the Dashboard.
+| Vai trò | URL | Mô tả |
+|---------|-----|-------|
+| Tất cả | `/login` | Trang đăng nhập |
+| Collector | `/collector/tasks` | Danh sách task hôm nay, sắp xếp theo ưu tiên |
+| Manager | `/manager/dashboard` | KPI + biểu đồ + hiệu suất collector |
+| Manager | `/manager/whatif` | Điều chỉnh trọng số, preview, áp dụng config |
 
 ---
 
-### Collector – Task List (`/collector/tasks`)
+## Hướng Dẫn Sử Dụng
 
-The page shows **all debt collection tasks assigned to the logged-in collector** for the snapshot date (2024-12-31), sorted by priority (rank 1 = highest risk first).
+### Đăng nhập
+1. Mở **http://localhost:5000** → chuyển đến `/login`
+2. Nhập username và password từ bảng tài khoản trên
+3. Collector → chuyển đến danh sách task; Manager → chuyển đến Dashboard
 
-| Column | Description |
-|--------|-------------|
-| # | Priority rank (1 = most urgent) |
-| Customer | Full name |
-| Contract | Contract or card account number |
-| Product | Loan type or card type |
-| DPD | Days Past Due |
-| Outstanding | Total remaining debt (VND) |
-| Channel | Contact channel assigned by Model 1 |
-| Risk Score | Computed by Model 2 (higher = more critical) |
-| Status | Current task status |
+---
 
-**Actions:**
-- **Update status** — Use the dropdown in the Status column to change a task from `PENDING` → `IN_PROGRESS` → `DONE` or `SKIPPED`. The change is saved immediately (no page reload needed).
-- **View detail** — Click the eye icon (or customer name) to open a popup showing:
-  - Customer contact info (phone, email, address)
-  - Last 6 months of installment/payment history for that contract
-- **Logout** — Click the username in the top-right navbar → Logout.
+### Collector – Danh Sách Task (`/collector/tasks`)
 
-**Row color coding:**
-- Red row → DPD bucket D (≥ 30 days, FIELD visit required)
-- Yellow row → DPD bucket C (20–29 days, phone call)
-- Blue row → DPD bucket B (10–19 days, SMS)
-- No highlight → DPD bucket A (1–9 days, email)
+Hiển thị **tất cả task được phân công cho collector** theo ngày snapshot (2024-12-31), sắp xếp theo độ ưu tiên (rank 1 = rủi ro cao nhất).
+
+| Cột | Mô tả |
+|-----|-------|
+| # | Thứ hạng ưu tiên (1 = khẩn cấp nhất) |
+| Khách hàng | Họ tên đầy đủ |
+| Hợp đồng | Số hợp đồng vay hoặc tài khoản thẻ |
+| Sản phẩm | Loại vay hoặc loại thẻ |
+| DPD | Số ngày quá hạn |
+| Dư nợ | Tổng dư nợ còn lại (VND) |
+| Kênh | Kênh liên hệ do Model 1 xác định |
+| Risk Score | Điểm rủi ro từ Model 2 (cao hơn = nguy hiểm hơn) |
+| Trạng thái | Trạng thái xử lý hiện tại |
+
+**Thao tác:**
+- **Cập nhật trạng thái** — Dùng dropdown để chuyển `PENDING → IN_PROGRESS → DONE / SKIPPED`. Lưu ngay, không cần reload trang.
+- **Xem chi tiết** — Click icon mắt để xem popup: thông tin liên hệ KH, lịch sử 6 tháng thanh toán.
+- **Đăng xuất** — Click username góc trên phải → Logout.
+
+**Màu sắc dòng:**
+- Đỏ → Bucket D (DPD ≥ 30, cần gặp trực tiếp)
+- Vàng → Bucket C (DPD 20–29, gọi điện)
+- Xanh dương → Bucket B (DPD 10–19, SMS)
+- Không màu → Bucket A (DPD 1–9, email)
 
 ---
 
 ### Manager – Dashboard (`/manager/dashboard`)
 
-Overview of the entire debt collection portfolio for the snapshot date.
+Tổng quan danh mục thu hồi nợ toàn hệ thống theo ngày snapshot.
 
-**KPI Cards (top row):**
-| Card | Meaning |
+**KPI Cards:**
+| Card | Ý nghĩa |
 |------|---------|
-| Total Overdue Accounts | Number of contracts with DPD > 0 |
-| Total Outstanding (VND) | Sum of all overdue outstanding balances |
-| Tasks Done (%) | Proportion of today's tasks marked DONE |
-| Active Collectors | Number of collectors with at least 1 assigned task |
+| Tổng khoản quá hạn | Số hợp đồng có `dpd_current > 0` |
+| Tổng dư nợ quá hạn | Tổng `total_outstanding` (đơn vị tỷ VND) |
+| Tỷ lệ hoàn thành | % task có `task_status = DONE` |
+| Collector đang hoạt động | Số collector được phân công ít nhất 1 task |
 
-**Charts:**
-- **DPD Bucket Distribution** (bar chart) — Count of tasks per bucket (A / B / C / D)
-- **Channel Distribution** (doughnut chart) — Breakdown by contact channel (EMAIL / SMS / CALL / FIELD)
+**Biểu đồ:**
+- **Phân bố DPD Bucket** (bar chart) — Số task theo nhóm A / B / C / D
+- **Phân bố kênh liên hệ** (doughnut chart) — EMAIL / SMS / CALL / FIELD
+- **Phân bố Risk Score** (histogram) — Phân bố điểm rủi ro toàn bộ task
+- **Phân bố trạng thái task** — PENDING / IN_PROGRESS / DONE / SKIPPED
 
-**Collector Performance Table:**
-Shows each collector's assigned task count, completed (DONE), skipped, and a visual progress bar.
+**Bảng hiệu suất Collector:**
+Số task được giao / hoàn thành / bỏ qua / đang xử lý của từng collector.
 
 ---
 
 ### Manager – What-If Analysis (`/manager/whatif`)
 
-Experiment with Model 2 weight changes before applying them permanently.
+Thử nghiệm thay đổi trọng số Model 2 trước khi áp dụng chính thức.
 
-**Left panel – Weight sliders:**
-| Slider | Weight | Default | Meaning |
-|--------|--------|---------|---------|
-| α (Alpha) | `alpha` | 20 | Importance of overdue frequency (last 6 months) |
-| β (Beta) | `beta` | 25 | Importance of worst DPD (last 6 months) |
-| γ (Gamma) | `gamma` | 0.5 | Importance of current DPD |
-| δ (Delta) | `delta` | 10 | Importance of outstanding amount band |
-| ε (Epsilon) | `epsilon` | 5 | Mortgage vs credit card penalty |
+**Panel trái – Slider trọng số:**
+| Slider | Tham số | Mặc định | Ý nghĩa |
+|--------|---------|---------|---------|
+| α (Alpha) | `alpha` | 20 | Tầm quan trọng của tần suất quá hạn 6 tháng |
+| β (Beta) | `beta` | 25 | Tầm quan trọng của DPD cao nhất 6 tháng |
+| γ (Gamma) | `gamma` | 0.5 | Tầm quan trọng của DPD hiện tại |
+| δ (Delta) | `delta` | 10 | Tầm quan trọng của mức dư nợ |
+| ε (Epsilon) | `epsilon` | 5 | Phân biệt vay thế chấp vs thẻ tín dụng |
 
-Each slider is synced to a numeric input box — you can drag the slider or type a value directly.
+**Bước 1 – Preview (chưa lưu DB):**
+Click **"Tính lại (Preview)"** → hệ thống tính lại risk score trong bộ nhớ và hiển thị:
+- **Bảng so sánh Top 20**: thứ hạng cũ vs mới, điểm cũ vs mới, hướng thay đổi (↑ ↓ =)
+- **Histogram so sánh**: phân bố risk score trước và sau khi thay trọng số
+- **Thống kê thay đổi**: số task đổi thứ hạng, số task đổi kênh liên hệ
 
-**Step 1 – Preview (no changes saved):**
-Click **"Recalculate (Preview)"**. The system re-scores all tasks in memory using the new weights and shows:
-- **Comparison table** (top 20 tasks): old rank vs new rank, old score vs new score, change direction (↑ ↓ =)
-- **Risk Score Histogram**: distribution of new scores across all tasks
-- **Summary stats**: number of tasks that moved up / stayed / moved down in priority
+**Bước 2 – Apply (lưu vào DB):**
+Click **"Áp dụng cho Task Hôm Nay"**:
+1. Lưu trọng số mới vào bảng `scoring_config` (kèm username và timestamp)
+2. Rebuild toàn bộ data mart với trọng số mới
+3. Collector reload trang sẽ thấy thứ tự ưu tiên mới
 
-**Step 2 – Apply (saves to database):**
-After previewing, click **"Apply to Today's Tasks"**. This will:
-1. Save the new weights as a new row in `scoring_config` (with your username and timestamp)
-2. Rebuild the entire data mart for today using the new weights
-3. Collectors who reload their task list will immediately see the updated priority order
-
-> **Note:** Apply cannot be undone from the UI. To revert, re-run `python mart/build_mart.py 2024-12-31` or apply the original weights (α=20, β=25, γ=0.5, δ=10, ε=5) again.
+> **Lưu ý:** Apply không thể hoàn tác từ UI. Để khôi phục, áp dụng lại trọng số gốc (α=20, β=25, γ=0.5, δ=10, ε=5) hoặc chạy lại `python mart/build_mart.py 2024-12-31`.
 
 ---
 
-## Model Summary
+## Model 1 – Phân Loại Kênh Liên Hệ Theo DPD
+### (Decision Under Certainty – Quyết định trong điều kiện chắc chắn)
 
-### Model 1 – DPD Channel Assignment
-| DPD | Bucket | Channel |
-|-----|--------|---------|
-| 0 | ON_TIME | (no action) |
-| 1–9 | A | EMAIL |
-| 10–19 | B | SMS |
-| 20–29 | C | CALL |
-| ≥ 30 | D | FIELD |
+### Mô tả
+Model 1 là mô hình **tác nghiệp**, tự động xác định kênh liên hệ phù hợp cho từng khoản nợ dựa trên số ngày quá hạn (DPD – Days Past Due). Đây là quyết định **hoàn toàn xác định**: cùng một giá trị DPD luôn cho ra cùng một kênh liên hệ, không có yếu tố ngẫu nhiên.
 
-### Model 2 – Risk Score
+### Các biến theo lý thuyết Ch.7
+
+| Loại biến | Biến | Mô tả |
+|-----------|------|-------|
+| **Biến quyết định** | `assigned_channel` | Kênh liên hệ được chọn (EMAIL / SMS / CALL / FIELD) |
+| **Biến không kiểm soát** | `dpd_current` | Số ngày quá hạn thực tế của khách hàng |
+| **Biến trung gian** | `dpd_bucket` | Nhóm DPD (A / B / C / D) |
+| **Biến kết quả** | `task_status` | Trạng thái xử lý sau khi collector thực hiện |
+
+### Quy tắc phân loại
+
 ```
-risk_score = α × norm(num_overdue_6m)
-           + β × norm(max_dpd_6m)
+DPD = 0          → Nhóm: ON_TIME  → Kênh: Không cần xử lý
+DPD = 1  – 9    → Nhóm: A        → Kênh: EMAIL
+DPD = 10 – 19   → Nhóm: B        → Kênh: SMS
+DPD = 20 – 29   → Nhóm: C        → Kênh: CALL (Gọi điện)
+DPD ≥ 30         → Nhóm: D        → Kênh: FIELD (Gặp trực tiếp)
+```
+
+### Ánh xạ kênh → nhóm nhân viên
+
+| Kênh | Nhóm collector |
+|------|---------------|
+| EMAIL | EMAIL_SMS |
+| SMS | EMAIL_SMS |
+| CALL | CALL |
+| FIELD | FIELD |
+
+### Sơ đồ luồng Model 1
+
+```
+┌─────────────────┐
+│  fact_debt_      │
+│  installment     │
+│  (dpd_current)   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────────────────────────────┐
+│           assign_channel(dpd)           │
+│                                         │
+│  dpd ≤ 0  → ON_TIME  → NONE            │
+│  dpd ≤ 9  → Bucket A → EMAIL           │
+│  dpd ≤ 19 → Bucket B → SMS             │
+│  dpd ≤ 29 → Bucket C → CALL            │
+│  dpd ≥ 30 → Bucket D → FIELD           │
+└────────────────┬────────────────────────┘
+                 │
+                 ▼
+        ┌────────────────┐
+        │  dpd_bucket    │
+        │  assigned_     │
+        │  channel       │
+        └────────────────┘
+```
+
+---
+
+## Model 2 – Tính Điểm Rủi Ro & Xếp Hạng Ưu Tiên
+### (Decision Under Risk – Quyết định trong điều kiện rủi ro)
+
+### Mô tả
+Model 2 là mô hình **chiến thuật**, tính toán điểm rủi ro (`risk_score`) cho mỗi khoản nợ dựa trên lịch sử hành vi và đặc điểm khoản vay. Đây là quyết định **có rủi ro**: kết quả phụ thuộc vào nhiều yếu tố với trọng số có thể điều chỉnh bởi Manager qua chức năng What-If.
+
+### Công thức tính điểm
+
+```
+risk_score = α × normalize(num_overdue_6m)
+           + β × normalize(max_dpd_6m)
            + γ × dpd_current
            + δ × amount_band(total_outstanding)
            + ε × source_flag(product_source)
 ```
 
-Default weights: `α=20, β=25, γ=0.5, δ=10, ε=5`
+### Trọng số mặc định
+
+| Tham số | Ký hiệu | Giá trị mặc định | Ý nghĩa |
+|---------|---------|-----------------|---------|
+| alpha | α | 20 | Trọng số số lần quá hạn 6 tháng |
+| beta | β | 25 | Trọng số DPD cao nhất 6 tháng |
+| gamma | γ | 0.5 | Trọng số DPD hiện tại |
+| delta | δ | 10 | Trọng số mức dư nợ |
+| epsilon | ε | 5 | Trọng số loại sản phẩm |
+
+### Các biến theo lý thuyết Ch.7
+
+| Loại biến | Biến | Mô tả |
+|-----------|------|-------|
+| **Biến quyết định** | α, β, γ, δ, ε | Trọng số Manager điều chỉnh |
+| **Biến không kiểm soát** | `dpd_current`, `total_outstanding`, `num_overdue_6m`, `max_dpd_6m` | Dữ liệu thực tế từ DW |
+| **Biến trung gian** | `_norm_overdue`, `_norm_dpd6m`, `_amount_band`, `_source_flag` | Giá trị đã chuẩn hóa |
+| **Biến kết quả** | `risk_score`, `priority_rank` | Điểm rủi ro và thứ tự ưu tiên |
+
+### Chi tiết từng thành phần
+
+#### ① α × normalize(num_overdue_6m) — Lịch sử quá hạn 6 tháng
+- `num_overdue_6m`: số kỳ có trạng thái OVERDUE hoặc PARTIAL trong 6 tháng gần nhất
+- Chuẩn hóa Min-Max về 0–100 trên toàn bộ tập dữ liệu
+- α=20 → đóng góp tối đa 2,000 điểm
+
+#### ② β × normalize(max_dpd_6m) — DPD cao nhất 6 tháng
+- `max_dpd_6m`: số ngày quá hạn lớn nhất trong 6 tháng gần nhất
+- Chuẩn hóa Min-Max về 0–100
+- β=25 → **trọng số cao nhất**, đóng góp tối đa 2,500 điểm
+
+#### ③ γ × dpd_current — DPD hiện tại (không chuẩn hóa)
+- Giá trị DPD thực tế, không qua chuẩn hóa
+- γ=0.5 → ví dụ DPD=60 đóng góp 30 điểm
+
+#### ④ δ × amount_band(total_outstanding) — Mức dư nợ
+
+| Dư nợ còn lại | Điểm band |
+|--------------|-----------|
+| < 100 triệu VND | 10 |
+| 100 – 500 triệu VND | 30 |
+| 500 triệu – 1 tỷ VND | 60 |
+| > 1 tỷ VND | 100 |
+
+- δ=10 → đóng góp 100–1,000 điểm
+
+#### ⑤ ε × source_flag(product_source) — Loại sản phẩm
+
+| Sản phẩm | Điểm flag |
+|----------|-----------|
+| COREBANK (vay thế chấp) | 10 |
+| CORECARD (thẻ tín dụng) | 5 |
+
+- ε=5 → đóng góp 25 hoặc 50 điểm
+
+### Chuẩn hóa Min-Max
+
+```
+normalize(x) = (x - min) / (max - min) × 100
+```
+- Nếu min = max (tất cả bằng nhau) → normalize = 0
+
+### Xếp hạng ưu tiên
+
+```
+priority_rank = rank(risk_score, thứ tự giảm dần)
+```
+- `priority_rank = 1` → rủi ro cao nhất → được xử lý trước
+- Collector thấy danh sách task sắp xếp theo `priority_rank ASC`
 
 ---
 
-## Re-running After Changes
+## Phân Công Collector (Assign Collectors)
 
-If you need to rebuild everything from scratch:
+### Thuật toán Round-Robin
+
+Sau khi có `risk_score` và `assigned_channel`, hệ thống phân công nhân viên thu hồi nợ:
+
+```
+1. Lọc collector đang hoạt động (is_active = 1)
+2. Nhóm collector theo (team, branch_sk)
+3. Sắp xếp task theo priority_rank (ưu tiên cao → phân công trước)
+4. Với mỗi task:
+   a. Xác định team cần (EMAIL_SMS / CALL / FIELD)
+   b. Tìm nhóm collector cùng team + cùng chi nhánh
+   c. Nếu không có → fallback sang team đó ở chi nhánh bất kỳ
+   d. Round-robin: chọn collector tiếp theo chưa đủ max_daily_cases
+5. Nếu tất cả collector đã đủ tải → task không được phân công
+```
+
+### Giới hạn tải mỗi ngày
+
+| Nhóm | max_daily_cases |
+|------|----------------|
+| EMAIL_SMS | 60 ca/ngày |
+| CALL | 40 ca/ngày |
+| FIELD | 15 ca/ngày |
+
+---
+
+## Luồng Tổng Thể Model Base
+
+```
+fact_debt_installment
+        │
+        ▼
+[Model 1] assign_channel(dpd_current)
+        │
+        ├── dpd_bucket (A/B/C/D)
+        └── assigned_channel (EMAIL/SMS/CALL/FIELD)
+        │
+        ▼
+[Model 2] compute_risk_scores(weights)
+        │
+        ├── risk_score
+        └── priority_rank
+        │
+        ▼
+[Assign] assign_collectors (round-robin)
+        │
+        ├── collector_sk
+        └── collector_name
+        │
+        ▼
+dm_daily_collection_tasks
+(Collector xem & xử lý theo priority_rank)
+```
+
+---
+
+## Biểu Đồ Trong Ứng Dụng
+
+### Tab Manager – Dashboard
+
+| Biểu đồ | Mô tả | Dữ liệu nguồn |
+|---------|-------|--------------|
+| **KPI – Tổng khoản quá hạn** | Số hợp đồng có `dpd_current > 0` | `dm_daily_collection_tasks` |
+| **KPI – Tổng dư nợ quá hạn** | Tổng `total_outstanding` (đơn vị tỷ VND) | `dm_daily_collection_tasks` |
+| **KPI – Tỷ lệ hoàn thành** | % task có `task_status = DONE` | `dm_daily_collection_tasks` |
+| **KPI – Collector đang hoạt động** | Số collector được phân công | `dm_daily_collection_tasks` |
+| **Bar chart – Phân bố DPD Bucket** | Số task theo nhóm A/B/C/D | Output Model 1 |
+| **Doughnut – Phân bố kênh liên hệ** | Số task theo EMAIL/SMS/CALL/FIELD | Output Model 1 |
+| **Histogram – Phân bố Risk Score** | Số task theo dải điểm rủi ro | Output Model 2 |
+| **Doughnut – Phân bố trạng thái** | PENDING/IN_PROGRESS/DONE/SKIPPED | `dm_daily_collection_tasks` |
+| **Bảng – Hiệu suất Collector** | assigned / done / skipped / in_progress | `dm_daily_collection_tasks` |
+
+### Tab Manager – What-If Analysis
+
+| Biểu đồ | Mô tả |
+|---------|-------|
+| **Bảng so sánh Top 20** | Risk score cũ vs mới, thứ hạng cũ vs mới, chênh lệch |
+| **Histogram so sánh** | Phân bố risk score trước và sau khi thay đổi trọng số |
+| **Thống kê thay đổi** | Số task đổi thứ hạng, số task đổi kênh liên hệ |
+
+---
+
+## Ánh Xạ Lý Thuyết (Ch.6 & Ch.7)
+
+| Khái niệm | Áp dụng trong dự án |
+|-----------|---------------------|
+| Semistructured problem (Ch.6) | Thu hồi nợ: structured (DPD rule) + unstructured (chiến lược trọng số) |
+| DSS Architecture (Ch.6) | Data = Star Schema; Model = Model 1+2; UI = Web App |
+| Compound DSS (Ch.6) | Data-driven (DW, OLAP) + Model-driven (scoring, what-if) |
+| Operational model (Ch.6) | Model 1: DPD → Channel assignment |
+| Tactical model (Ch.6) | Model 2: Risk Score → Priority |
+| Decision under certainty (Ch.7) | Model 1: DPD xác định → channel xác định |
+| Decision under risk (Ch.7) | Model 2: behavior lịch sử + trọng số → risk score |
+| What-If Analysis (Ch.7) | Tab Manager: thay đổi trọng số → xem preview |
+| Sensitivity Analysis (Ch.7) | So sánh current vs new risk_score, đo mức thay đổi ranking |
+| Static model (Ch.7) | Model 1 & 2 tính trên snapshot 1 ngày |
+| Star Schema (Ch.3) | 5 dim + 1 fact |
+
+---
+
+## Chạy Lại Sau Khi Thay Đổi
+
+Rebuild toàn bộ từ đầu:
 ```bash
-python etl/run_etl.py          # ~2 min, recreates all tables
+python etl/run_etl.py
 python mart/build_mart.py 2024-12-31
 python run.py
 ```
 
-To rebuild only the mart (e.g. after manually editing scoring_config):
+Chỉ rebuild mart (sau khi sửa `scoring_config`):
 ```bash
 python mart/build_mart.py 2024-12-31
 ```
