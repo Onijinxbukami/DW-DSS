@@ -13,6 +13,7 @@ import psycopg2.extras
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.db import get_db_conn
+from config import SNAPSHOT_DATE_STR as DEFAULT_SNAPSHOT
 from models.model1_channel import assign_channel
 from models.model2_risk_score import compute_risk_scores, weights_from_config
 from models.assign_collectors import assign_collectors
@@ -87,7 +88,7 @@ def build_mart(snapshot_date: str | None = None, conn=None):
         close_conn = True
 
     if snapshot_date is None:
-        snapshot_date = date.today().isoformat()
+        snapshot_date = DEFAULT_SNAPSHOT
 
     print(f"Building data mart for snapshot_date={snapshot_date}...")
 

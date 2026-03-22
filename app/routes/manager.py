@@ -24,10 +24,10 @@ def dashboard():
         "WHERE dpd_current > 0 AND snapshot_date = %s", (SNAPSHOT_DATE,)
     ).fetchone()["n"] or 0
 
-    kpi_outstanding = conn.execute(
+    kpi_outstanding = int(conn.execute(
         "SELECT COALESCE(SUM(total_outstanding),0) AS n FROM dm_daily_collection_tasks "
         "WHERE dpd_current > 0 AND snapshot_date = %s", (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 0
+    ).fetchone()["n"] or 0)
 
     total_tasks = conn.execute(
         "SELECT COUNT(*) AS n FROM dm_daily_collection_tasks WHERE snapshot_date = %s",
