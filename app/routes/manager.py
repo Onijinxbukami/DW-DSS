@@ -76,6 +76,34 @@ def dashboard():
     ).fetchall()
     channel_data = {r["assigned_channel"]: r["cnt"] for r in channel_rows}
 
+    # Risk score histogram (10 buckets)
+    risk_rows = conn.execute(
+        """SELECT
+             CASE
+               WHEN risk_score < 20  THEN '0–20'
+               WHEN risk_score < 40  THEN '20–40'
+               WHEN risk_score < 60  THEN '40–60'
+               WHEN risk_score < 80  THEN '60–80'
+               WHEN risk_score < 100 THEN '80–100'
+               ELSE '100+'
+             END AS bucket,
+             COUNT(*) AS cnt
+           FROM dm_daily_collection_tasks
+           WHERE snapshot_date = %s
+           GROUP BY bucket
+           ORDER BY MIN(risk_score)""",
+        (SNAPSHOT_DATE,)
+    ).fetchall()
+    risk_data = {r["bucket"]: r["cnt"] for r in risk_rows}
+
+    # Task status distribution
+    status_rows = conn.execute(
+        "SELECT task_status, COUNT(*) AS cnt FROM dm_daily_collection_tasks "
+        "WHERE snapshot_date = %s GROUP BY task_status",
+        (SNAPSHOT_DATE,)
+    ).fetchall()
+    status_data = {r["task_status"]: r["cnt"] for r in status_rows}
+
     conn.close()
 
     return render_template(
@@ -86,6 +114,8 @@ def dashboard():
         kpi_active_collectors=kpi_active_collectors,
         bucket_data=json.dumps(bucket_data),
         channel_data=json.dumps(channel_data),
+        risk_data=json.dumps(risk_data),
+        status_data=json.dumps(status_data),
         perf_rows=[dict(r) for r in perf_rows],
         snapshot_date=SNAPSHOT_DATE,
     )
@@ -148,11 +178,14 @@ def whatif_preview():
 
     top20 = tasks.nsmallest(20, "priority_rank")[
         ["task_id", "customer_name", "contract_no", "dpd_current",
-         "old_risk_score", "old_priority_rank",
+         "total_outstanding", "old_risk_score", "old_priority_rank",
          "risk_score", "priority_rank", "rank_delta", "score_delta"]
     ].to_dict(orient="records")
 
     rank_changes = int((tasks["priority_rank"] != tasks["old_priority_rank"]).sum())
+    channel_changes = int((tasks.apply(
+        lambda r: assign_channel(r["dpd_current"]), axis=1
+    ) != tasks["assigned_channel"]).sum()) if "assigned_channel" in tasks.columns else 0
 
     hist_bins = [0, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 10000]
     old_hist = pd.cut(tasks["old_risk_score"], bins=hist_bins).value_counts().sort_index()
@@ -166,6 +199,7 @@ def whatif_preview():
     return jsonify({
         "top20":              top20,
         "rank_changes":       rank_changes,
+        "channel_changes":    channel_changes,
         "score_distribution": score_distribution,
     })
 

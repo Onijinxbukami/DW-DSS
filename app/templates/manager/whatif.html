@@ -5,22 +5,30 @@
 {% endblock %}
 
 {% block content %}
-<h5 class="fw-bold mb-3">
-  <i class="bi bi-sliders text-primary"></i> What-If Analysis – Điều Chỉnh Trọng Số Model
-</h5>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">
+    <i class="bi bi-sliders text-primary"></i> What-If Analysis – Điều Chỉnh Trọng Số Model
+  </h5>
+  <span class="badge bg-secondary rounded-pill">
+    Config hiện tại #{{ current_weights.config_id }} · {{ current_weights.effective_date }}
+  </span>
+</div>
 
 <div class="row g-4">
-  <!-- Left Panel: Weight Sliders -->
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-primary text-white fw-semibold">
+
+  {# ── Left Panel: Weight Sliders ─────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card weight-panel border-0 shadow-sm">
+      <div class="card-header bg-primary text-white fw-semibold rounded-top">
         <i class="bi bi-toggles"></i> Trọng Số Model 2
       </div>
       <div class="card-body">
-        <p class="text-muted small mb-3">
-          Config hiện tại: <strong>#{{ current_weights.config_id }}</strong>
-          ({{ current_weights.effective_date }})
-        </p>
+
+        <div class="impact-highlight mb-3">
+          <i class="bi bi-info-circle text-warning"></i>
+          Điều chỉnh trọng số bên dưới rồi bấm <strong>Xem Preview</strong> để xem tác động.
+          Collector <strong>chưa bị ảnh hưởng</strong> cho đến khi bấm "Áp Dụng".
+        </div>
 
         {% set params = [
           ('alpha',   'α – Số kỳ trễ 6T',    'num_overdue_6m',  0, 50, 1),
@@ -32,37 +40,40 @@
 
         {% for key, label, hint, mn, mx, step in params %}
         <div class="mb-3">
-          <label class="form-label fw-semibold small">
-            {{ label }}
-            <span class="text-muted">(hiện tại: {{ current_weights[key] }})</span>
-          </label>
+          <div class="d-flex justify-content-between align-items-baseline mb-1">
+            <label class="form-label fw-semibold small mb-0">{{ label }}</label>
+            <span class="text-muted small">
+              Hiện tại: <strong>{{ current_weights[key] }}</strong>
+            </span>
+          </div>
           <div class="d-flex align-items-center gap-2">
             <input type="range" class="form-range flex-grow-1"
                    id="slider-{{ key }}"
                    min="{{ mn }}" max="{{ mx }}" step="{{ step }}"
                    value="{{ current_weights[key] }}"
-                   oninput="syncInput('{{ key }}')">
-            <input type="number" class="form-control form-control-sm"
+                   oninput="syncInput('{{ key }}'); resetPreview()">
+            <input type="number" class="form-control form-control-sm text-center"
                    id="input-{{ key }}" style="width:70px"
                    min="{{ mn }}" max="{{ mx }}" step="{{ step }}"
                    value="{{ current_weights[key] }}"
-                   oninput="syncSlider('{{ key }}')">
+                   oninput="syncSlider('{{ key }}'); resetPreview()">
           </div>
         </div>
         {% endfor %}
 
         <div class="mb-3">
-          <label class="form-label fw-semibold small">Ghi chú</label>
+          <label class="form-label small fw-semibold">Ghi chú (tùy chọn)</label>
           <input type="text" class="form-control form-control-sm" id="desc-input"
-                 placeholder="Mô tả thay đổi (tùy chọn)">
+                 placeholder="Ví dụ: Tăng trọng số max DPD để ưu tiên nợ lâu ngày">
         </div>
 
         <div class="d-grid gap-2">
-          <button class="btn btn-outline-primary" id="preview-btn" onclick="previewWhatIf()">
+          <button class="btn btn-outline-primary fw-semibold" id="preview-btn" onclick="previewWhatIf()">
             <i class="bi bi-eye"></i> Xem Preview
           </button>
-          <button class="btn btn-danger fw-bold" id="apply-btn" onclick="applyConfig()" disabled>
-            <i class="bi bi-check-circle"></i> Áp Dụng Cho Hôm Nay
+          <button class="btn btn-danger fw-bold" id="apply-btn"
+                  onclick="openApplyModal()" disabled>
+            <i class="bi bi-lightning-fill"></i> Áp Dụng Cho Hôm Nay
           </button>
         </div>
         <div id="apply-result" class="mt-2"></div>
@@ -70,35 +81,39 @@
     </div>
   </div>
 
-  <!-- Right Panel: Preview Results -->
-  <div class="col-md-8">
-    <!-- Stats Summary -->
-    <div class="row g-2 mb-3" id="summary-stats" style="display:none!important">
+  {# ── Right Panel: Impact First ──────────────────────── #}
+  <div class="col-lg-8">
+
+    {# Impact summary cards – hidden until preview #}
+    <div id="impact-summary" class="row g-2 mb-3" style="display:none!important">
       <div class="col-4">
-        <div class="card border-warning text-center py-2">
+        <div class="card border-warning text-center py-2 shadow-sm">
           <div class="fs-4 fw-bold text-warning" id="stat-rank-changes">–</div>
           <div class="small text-muted">Task đổi thứ hạng</div>
         </div>
       </div>
+      <div class="col-4">
+        <div class="card border-success text-center py-2 shadow-sm">
+          <div class="fs-4 fw-bold text-success" id="stat-channel-changes">–</div>
+          <div class="small text-muted">Đổi kênh liên hệ</div>
+        </div>
+      </div>
+      <div class="col-4">
+        <div class="card border-info text-center py-2 shadow-sm">
+          <div class="fs-4 fw-bold text-info" id="stat-avg-delta">–</div>
+          <div class="small text-muted">Δ Score trung bình</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Histogram -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white fw-semibold">
-        <i class="bi bi-bar-chart text-primary"></i> Phân Bố Risk Score (Trước / Sau)
-      </div>
-      <div class="card-body">
-        <canvas id="histChart" height="120"></canvas>
-        <p class="text-muted small text-center mt-1" id="no-preview-msg">
-          Nhấn "Xem Preview" để so sánh
-        </p>
-      </div>
-    </div>
-
-    <!-- Top 20 Table -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white fw-semibold">
-        <i class="bi bi-trophy text-primary"></i> Top 20 Khoản Ưu Tiên Cao Nhất (So Sánh)
+    {# Top rank changes – shown first (most actionable) #}
+    <div class="card chart-card shadow-sm mb-3">
+      <div class="card-header">
+        <i class="bi bi-trophy text-warning"></i>
+        Top 20 Thay Đổi Thứ Hạng
+        <span class="text-muted small fw-normal ms-2" id="preview-hint">
+          (Nhấn "Xem Preview" để xem kết quả)
+        </span>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -108,22 +123,73 @@
                 <th>Khách hàng</th>
                 <th>Hợp đồng</th>
                 <th class="text-center">DPD</th>
-                <th class="text-end">Score cũ</th>
-                <th class="text-center">Hạng cũ</th>
-                <th class="text-end">Score mới</th>
-                <th class="text-center">Hạng mới</th>
+                <th class="text-center">Dư nợ</th>
+                <th class="text-center">Hạng cũ → Mới</th>
                 <th class="text-center">Thay đổi</th>
+                <th class="text-end">Score mới</th>
               </tr>
             </thead>
             <tbody id="compare-tbody">
-              <tr><td colspan="8" class="text-center text-muted py-3">Nhấn "Xem Preview" để xem kết quả</td></tr>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  <i class="bi bi-bar-chart-steps fs-3 d-block mb-2 text-muted opacity-50"></i>
+                  Nhấn "Xem Preview" để so sánh thứ hạng
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
+
+    {# Score distribution histogram #}
+    <div class="card chart-card shadow-sm">
+      <div class="card-header">
+        <i class="bi bi-bar-chart text-primary"></i> Phân Bố Risk Score (Hiện Tại / Sau Điều Chỉnh)
+      </div>
+      <div class="card-body">
+        <canvas id="histChart" height="130"></canvas>
+        <p class="text-muted small text-center mt-1" id="no-preview-msg">
+          Biểu đồ sẽ hiển thị sau khi xem preview
+        </p>
+      </div>
+    </div>
   </div>
 </div>
+
+{# ── Apply Confirmation Modal ────────────────────────── #}
+<div class="modal fade" id="applyModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-exclamation-triangle-fill"></i> Xác Nhận Áp Dụng Config
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="apply-modal-warning">
+          <i class="bi bi-lightning-fill text-warning"></i>
+          Hành động này sẽ <strong>ghi đè thứ tự ưu tiên hôm nay</strong> cho tất cả collector.
+          Collector cần <strong>reload trang</strong> để thấy thứ tự mới.
+        </div>
+        <div id="apply-summary-text" class="small text-muted mb-3"></div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Ghi chú config:</label>
+          <div id="apply-desc-display" class="form-control form-control-sm bg-light" style="min-height:2.2rem"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button class="btn btn-danger fw-bold" id="confirm-apply-btn" onclick="applyConfig()">
+          <i class="bi bi-check-circle-fill"></i> Xác Nhận Áp Dụng
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
 {% endblock %}
 
 {% block scripts %}

@@ -12,41 +12,60 @@
 <body>
 
 {% if session.username %}
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="/">
-      <i class="bi bi-bank2"></i> Ngân Hàng A – Thu Hồi Nợ
+    <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+      <i class="bi bi-bank2 fs-5"></i>
+      <span class="d-none d-sm-inline">Ngân Hàng A – Thu Hồi Nợ</span>
+      <span class="d-inline d-sm-none">NH-A DSS</span>
     </a>
-    <div class="navbar-nav ms-auto d-flex align-items-center gap-2">
+
+    <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-1 gap-sm-2">
       {% if session.role == 'manager' %}
-        <a class="nav-link text-white {% if request.endpoint == 'manager.dashboard' %}active fw-bold{% endif %}"
+        <a class="nav-link text-white px-2 py-1 rounded
+                   {% if request.endpoint == 'manager.dashboard' %}active{% endif %}"
            href="{{ url_for('manager.dashboard') }}">
-          <i class="bi bi-speedometer2"></i> Dashboard
+          <i class="bi bi-speedometer2"></i>
+          <span class="d-none d-md-inline ms-1">Dashboard</span>
         </a>
-        <a class="nav-link text-white {% if request.endpoint == 'manager.whatif' %}active fw-bold{% endif %}"
+        <a class="nav-link text-white px-2 py-1 rounded
+                   {% if request.endpoint == 'manager.whatif' %}active{% endif %}"
            href="{{ url_for('manager.whatif') }}">
-          <i class="bi bi-sliders"></i> What-If Analysis
+          <i class="bi bi-sliders"></i>
+          <span class="d-none d-md-inline ms-1">What-If</span>
         </a>
       {% else %}
-        <a class="nav-link text-white {% if request.endpoint == 'collector.tasks' %}active fw-bold{% endif %}"
+        <a class="nav-link text-white px-2 py-1 rounded
+                   {% if request.endpoint == 'collector.tasks' %}active{% endif %}"
            href="{{ url_for('collector.tasks') }}">
-          <i class="bi bi-list-task"></i> Danh Sách Task
+          <i class="bi bi-list-task"></i>
+          <span class="d-none d-md-inline ms-1">Task của tôi</span>
         </a>
       {% endif %}
-      <span class="text-white-50">|</span>
-      <span class="text-white-50 small">
-        <i class="bi bi-person-circle"></i> {{ session.name }}
-        <span class="badge bg-secondary ms-1">{{ session.role }}</span>
+
+      <span class="text-white-50 d-none d-sm-inline">|</span>
+
+      <span class="text-white-50 small d-flex align-items-center gap-1">
+        <i class="bi bi-person-circle"></i>
+        <span class="d-none d-sm-inline">{{ session.name }}</span>
+        <span class="badge rounded-pill
+          {% if session.role == 'manager' %}bg-warning text-dark{% else %}bg-light text-dark{% endif %}
+          ms-1">
+          {{ session.role }}
+        </span>
       </span>
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}">
-        <i class="bi bi-box-arrow-right"></i> Đăng xuất
+
+      <a class="btn btn-outline-light btn-sm" href="{{ url_for('auth.logout') }}"
+         title="Đăng xuất">
+        <i class="bi bi-box-arrow-right"></i>
+        <span class="d-none d-sm-inline ms-1">Đăng xuất</span>
       </a>
     </div>
   </div>
 </nav>
 {% endif %}
 
-<div class="container-fluid px-4 mt-3">
+<div class="container-fluid px-3 px-md-4 mt-3">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, msg in messages %}
       <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">

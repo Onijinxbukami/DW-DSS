@@ -4,6 +4,7 @@ Used by: app routes, ETL scripts, mart/build_mart.py
 """
 import os
 import sys
+from urllib.parse import urlparse
 
 import psycopg2
 import psycopg2.extras
@@ -34,6 +35,12 @@ class PgConn:
         cur.executemany(sql, seq_of_params)
         return cur
 
+    def execute_values(self, sql, seq_of_params, page_size=1000):
+        """Bulk insert using psycopg2.extras.execute_values (much faster than executemany)."""
+        cur = self.raw.cursor()
+        psycopg2.extras.execute_values(cur, sql, seq_of_params, page_size=page_size)
+        return cur
+
     def commit(self):
         self.raw.commit()
 
@@ -52,8 +59,26 @@ class PgConn:
 
 
 def get_db() -> PgConn:
-    """Open a PostgreSQL connection and return a PgConn wrapper."""
-    raw = psycopg2.connect(DATABASE_URL)
+    """
+    Open a PostgreSQL connection and return a PgConn wrapper.
+
+    If DB_PASSWORD is set in the environment, it is injected after parsing
+    DATABASE_URL so that passwords containing special characters (@, |, #, etc.)
+    do not need to be URL-encoded.
+    """
+    db_password = os.environ.get("DB_PASSWORD")
+    if db_password:
+        p = urlparse(DATABASE_URL)
+        raw = psycopg2.connect(
+            host=p.hostname,
+            port=p.port or 5432,
+            dbname=p.path.lstrip("/"),
+            user=p.username,
+            password=db_password,
+            sslmode="require",
+        )
+    else:
+        raw = psycopg2.connect(DATABASE_URL, sslmode="require")
     return PgConn(raw)
 
 

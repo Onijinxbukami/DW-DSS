@@ -1,7 +1,8 @@
-/* DSS Thu Hồi Nợ – Custom styles */
+/* DSS Thu Hồi Nợ – Enhanced UI/UX styles */
 
+/* ── Base ─────────────────────────────────────────────── */
 body {
-  background-color: #f8f9fa;
+  background-color: #f0f2f5;
   font-size: 0.9rem;
 }
 
@@ -9,35 +10,222 @@ body {
   letter-spacing: 0.02em;
 }
 
-.card {
-  border-radius: 0.75rem;
-}
-
-.table th {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.badge {
-  font-size: 0.75rem;
-}
-
 code {
   font-size: 0.8rem;
   color: #6f42c1;
 }
 
-.status-select {
-  min-width: 130px;
+/* ── DPD Bucket Color System ──────────────────────────── */
+:root {
+  --dpd-a: #ffc107;      /* 1–9   yellow */
+  --dpd-b: #fd7e14;      /* 10–19 orange */
+  --dpd-c: #dc3545;      /* 20–29 red */
+  --dpd-d: #212529;      /* ≥30   dark */
+  --dpd-ok: #198754;     /* 0     green */
 }
 
-/* Priority rank number styling */
-td:first-child {
+/* ── Task Cards (Collector Tab 1) ─────────────────────── */
+.task-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  overflow: hidden;
+  position: relative;
+}
+.task-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.13);
+  transform: translateY(-1px);
+}
+
+/* Left color strip */
+.task-card .dpd-strip {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  border-radius: 0.75rem 0 0 0.75rem;
+}
+.task-card.dpd-ok   .dpd-strip { background: var(--dpd-ok); }
+.task-card.dpd-a    .dpd-strip { background: var(--dpd-a); }
+.task-card.dpd-b    .dpd-strip { background: var(--dpd-b); }
+.task-card.dpd-c    .dpd-strip { background: var(--dpd-c); }
+.task-card.dpd-d    .dpd-strip { background: var(--dpd-d); }
+
+.task-card .card-body {
+  padding-left: 1.25rem;
+}
+
+/* Priority rank badge */
+.priority-rank {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #adb5bd;
+  min-width: 2.5rem;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.priority-rank.top3 { color: #dc3545; }
+.priority-rank.top10 { color: #fd7e14; }
 
-/* Highlight overdue rows */
-.table-danger td { color: #842029; }
-.table-warning td { color: #664d03; }
+/* Channel badge */
+.channel-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3em 0.7em;
+  border-radius: 2rem;
+  white-space: nowrap;
+}
+.channel-EMAIL  { background: #cfe2ff; color: #084298; }
+.channel-SMS    { background: #e0cffc; color: #3d0a91; }
+.channel-CALL   { background: #ffe5d0; color: #a93226; }
+.channel-FIELD  { background: #212529; color: #fff; }
+
+/* DPD badge inside cards */
+.dpd-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25em 0.6em;
+  border-radius: 0.4rem;
+}
+.dpd-badge.dpd-ok { background: #d1e7dd; color: #0a3622; }
+.dpd-badge.dpd-a  { background: #fff3cd; color: #664d03; }
+.dpd-badge.dpd-b  { background: #ffe5d0; color: #7c3300; }
+.dpd-badge.dpd-c  { background: #f8d7da; color: #58151c; }
+.dpd-badge.dpd-d  { background: #212529; color: #fff; }
+
+/* Status select */
+.status-select {
+  min-width: 145px;
+  font-size: 0.82rem;
+}
+
+/* Saving animation on status change */
+.status-saving { opacity: 0.5; pointer-events: none; }
+
+/* ── Toast notifications ──────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1090;
+}
+
+/* ── Detail Modal / Bottom Sheet ─────────────────────── */
+.history-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.history-timeline li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+}
+.history-timeline li:last-child { border-bottom: none; }
+.timeline-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── KPI Cards (Dashboard) ────────────────────────────── */
+.kpi-card {
+  border-radius: 1rem;
+  border: none;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+  transition: transform 0.15s ease;
+}
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-card .kpi-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.kpi-card .kpi-label {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+.kpi-card .kpi-icon {
+  font-size: 2.5rem;
+  opacity: 0.3;
+}
+
+/* ── Charts ───────────────────────────────────────────── */
+.chart-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.chart-card .card-header {
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+  border-radius: 0.75rem 0.75rem 0 0 !important;
+}
+
+/* ── What-If Panel ────────────────────────────────────── */
+.weight-panel {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  position: sticky;
+  top: 1rem;
+}
+
+.rank-change-up   { color: #198754; font-weight: 700; }
+.rank-change-down { color: #dc3545; font-weight: 700; }
+.rank-change-none { color: #adb5bd; }
+
+.impact-highlight {
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 0.4rem 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+/* ── Apply Confirmation Modal ─────────────────────────── */
+.apply-modal-warning {
+  background: #fff3cd;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ffc107;
+  margin-bottom: 1rem;
+}
+
+/* ── Progress bar override ────────────────────────────── */
+.progress { border-radius: 1rem; }
+.progress-bar { border-radius: 1rem; font-size: 0.7rem; }
+
+/* ── Table enhancements ───────────────────────────────── */
+.table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: #6c757d;
+}
+
+/* ── Navbar active state ──────────────────────────────── */
+.nav-link.active {
+  background: rgba(255,255,255,0.15) !important;
+  border-radius: 0.4rem;
+}
+
+/* ── Mobile first (Collector field view) ─────────────── */
+@media (max-width: 768px) {
+  .task-card .card-body {
+    padding: 0.85rem 0.85rem 0.85rem 1.1rem;
+  }
+  .priority-rank { font-size: 1.2rem; min-width: 1.8rem; }
+  .status-select { min-width: 120px; }
+  .kpi-card .kpi-value { font-size: 1.5rem; }
+
+  /* Stack card info vertically on mobile */
+  .task-meta { flex-direction: column; gap: 0.25rem !important; }
+}

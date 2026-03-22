@@ -7,6 +7,7 @@ import sys
 
 import pandas as pd
 from datetime import date, timedelta
+import psycopg2.extras
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import DATA_DIR
@@ -105,9 +106,10 @@ def load_dim_branch(conn):
         (row["branch_code_clean"], row["branch_name"], row["city"], row["region"])
         for _, row in df.iterrows()
     ]
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dim_branch (branch_code_clean, branch_name, city, region)
-           VALUES (%s,%s,%s,%s)
+           VALUES %s
            ON CONFLICT (branch_code_clean) DO NOTHING""",
         rows
     )
@@ -154,11 +156,12 @@ def load_dim_customer(conn):
             str(source_cif) if source_cif else None, source_cc_user_id
         ))
 
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dim_customer
            (national_id, full_name, phone, email, address,
             has_mortgage, has_credit_card, source_cif, source_cc_user_id)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+           VALUES %s
            ON CONFLICT (national_id) DO NOTHING""",
         rows
     )
@@ -189,9 +192,10 @@ def load_dim_product(conn):
         name = f"{ct} {pt}"
         rows.append(("CORECARD", code, name, ct))
 
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dim_product (product_source, product_code, product_name, card_type)
-           VALUES (%s,%s,%s,%s)
+           VALUES %s
            ON CONFLICT DO NOTHING""",
         rows
     )
@@ -218,11 +222,12 @@ def load_dim_collector(conn):
             str(r["email"]), str(r["phone"]), int(r["is_active"])
         ))
 
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dim_collector
            (collector_code, collector_name, team, branch_sk,
             max_daily_cases, email, phone, is_active)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+           VALUES %s
            ON CONFLICT (collector_code) DO NOTHING""",
         rows
     )
@@ -254,13 +259,15 @@ def load_dim_date(conn):
         ))
         current += timedelta(days=1)
 
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dim_date
            (date_sk, full_date, day_of_week, day_name,
             month, quarter, year, is_weekend, is_working_day)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+           VALUES %s
            ON CONFLICT (date_sk) DO NOTHING""",
-        rows
+        rows,
+        page_size=2000
     )
     conn.commit()
     print(f"  dim_date: {len(rows)} rows")

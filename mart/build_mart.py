@@ -9,6 +9,7 @@ import sys
 from datetime import date
 
 import pandas as pd
+import psycopg2.extras
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.db import get_db_conn
@@ -32,35 +33,46 @@ FROM fact_debt_installment f
 GROUP BY f.customer_sk, f.contract_no
 """
 
-# Latest overdue installment per (customer_sk, contract_no)
+# Latest overdue installment per (customer_sk, contract_no) — using window function (no correlated subquery)
 _CURRENT_TASKS_SQL = """
+WITH ranked AS (
+    SELECT
+        f.fact_id,
+        f.customer_sk,
+        f.contract_no,
+        f.product_source,
+        f.branch_sk,
+        f.product_sk,
+        f.dpd          AS dpd_current,
+        f.amount_due   AS amount_due_current,
+        f.total_outstanding,
+        ROW_NUMBER() OVER (
+            PARTITION BY f.customer_sk, f.contract_no
+            ORDER BY f.due_date_sk DESC
+        ) AS rn
+    FROM fact_debt_installment f
+    WHERE f.dpd > 0
+)
 SELECT
-    f.fact_id,
-    f.customer_sk,
-    f.contract_no,
-    f.product_source,
-    f.branch_sk,
-    f.dpd          AS dpd_current,
-    f.amount_due   AS amount_due_current,
-    f.total_outstanding,
+    r.fact_id,
+    r.customer_sk,
+    r.contract_no,
+    r.product_source,
+    r.branch_sk,
+    r.dpd_current,
+    r.amount_due_current,
+    r.total_outstanding,
     p.product_code,
     c.full_name    AS customer_name,
     c.national_id,
     c.phone,
     c.email,
     b.branch_name
-FROM fact_debt_installment f
-JOIN dim_customer c  ON f.customer_sk = c.customer_sk
-JOIN dim_product  p  ON f.product_sk  = p.product_sk
-JOIN dim_branch   b  ON f.branch_sk   = b.branch_sk
-WHERE f.dpd > 0
-  AND f.due_date_sk = (
-      SELECT MAX(f2.due_date_sk)
-      FROM fact_debt_installment f2
-      WHERE f2.customer_sk  = f.customer_sk
-        AND f2.contract_no  = f.contract_no
-        AND f2.dpd > 0
-  )
+FROM ranked r
+JOIN dim_customer c  ON r.customer_sk = c.customer_sk
+JOIN dim_product  p  ON r.product_sk  = p.product_sk
+JOIN dim_branch   b  ON r.branch_sk   = b.branch_sk
+WHERE r.rn = 1
 """
 
 
@@ -160,7 +172,8 @@ def build_mart(snapshot_date: str | None = None, conn=None):
             config_id,
         ))
 
-    conn.executemany(
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
         """INSERT INTO dm_daily_collection_tasks
            (snapshot_date, customer_sk, customer_name, national_id, phone, email,
             contract_no, product_source, product_code, branch_sk, branch_name,
@@ -168,8 +181,9 @@ def build_mart(snapshot_date: str | None = None, conn=None):
             dpd_bucket, assigned_channel, num_overdue_6m, max_dpd_6m,
             risk_score, priority_rank, collector_sk, collector_name,
             task_status, config_id)
-           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-        insert_rows
+           VALUES %s""",
+        insert_rows,
+        page_size=2000,
     )
     conn.commit()
 

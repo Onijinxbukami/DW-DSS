@@ -2,111 +2,175 @@
 {% block title %}Task Hôm Nay – {{ session.name }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+{# ── Header bar ─────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
   <div>
     <h5 class="mb-0 fw-bold">
       <i class="bi bi-list-task text-primary"></i>
       Xin chào, <span class="text-primary">{{ session.name }}</span>
     </h5>
-    <small class="text-muted">Ngày: 2024-12-31 | Team: {{ tasks[0].assigned_channel if tasks else '–' }}</small>
+    <small class="text-muted">
+      Ngày: 2024-12-31
+      {% if tasks %}
+        &nbsp;·&nbsp; Team: <strong>{{ tasks[0].team if tasks[0].team is defined else session.name }}</strong>
+      {% endif %}
+    </small>
   </div>
-  <span class="badge bg-primary fs-6">{{ tasks | length }} task hôm nay</span>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    {# Summary counts #}
+    {% if tasks %}
+      {% set done_count = tasks | selectattr('task_status', 'equalto', 'DONE') | list | length %}
+      {% set total = tasks | length %}
+      <div class="text-muted small">
+        Hoàn thành:
+        <strong class="text-success">{{ done_count }}</strong> / {{ total }}
+      </div>
+      <div class="progress" style="width:100px; height:8px">
+        <div class="progress-bar bg-success"
+             style="width:{{ (done_count / total * 100)|int if total else 0 }}%"></div>
+      </div>
+    {% endif %}
+    <span class="badge bg-primary fs-6 rounded-pill">{{ tasks | length }} task hôm nay</span>
+  </div>
 </div>
 
+{# ── Empty state ─────────────────────────────────────── #}
 {% if not tasks %}
-  <div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> Không có task nào được giao cho bạn hôm nay.
+  <div class="alert alert-info d-flex align-items-center gap-2">
+    <i class="bi bi-inbox fs-4"></i>
+    <div>Không có task nào được giao cho bạn hôm nay.</div>
   </div>
+
+{# ── Task Cards ──────────────────────────────────────── #}
 {% else %}
-<div class="table-responsive">
-  <table class="table table-hover table-bordered align-middle" id="tasks-table">
-    <thead class="table-primary">
-      <tr>
-        <th>#</th>
-        <th>Khách hàng</th>
-        <th>SĐT</th>
-        <th>Hợp đồng</th>
-        <th>Sản phẩm</th>
-        <th>DPD</th>
-        <th>Dư nợ (VNĐ)</th>
-        <th>Kênh</th>
-        <th>Risk Score</th>
-        <th>Trạng thái</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in tasks %}
-      <tr class="
-        {% if t.dpd_current >= 30 %}table-danger
-        {% elif t.dpd_current >= 20 %}table-warning
-        {% elif t.dpd_current >= 10 %}table-info
-        {% else %}{% endif %}
-      ">
-        <td class="fw-bold text-muted">{{ t.priority_rank }}</td>
-        <td>{{ t.customer_name }}</td>
-        <td><a href="tel:{{ t.phone }}">{{ t.phone }}</a></td>
-        <td><code>{{ t.contract_no }}</code></td>
-        <td>
-          <span class="badge {% if t.product_source == 'COREBANK' %}bg-success{% else %}bg-info text-dark{% endif %}">
-            {{ t.product_source }}
-          </span>
-          {{ t.product_code }}
-        </td>
-        <td>
-          <span class="badge
-            {% if t.dpd_current >= 30 %}bg-danger
-            {% elif t.dpd_current >= 20 %}bg-warning text-dark
-            {% elif t.dpd_current >= 10 %}bg-info text-dark
-            {% elif t.dpd_current > 0 %}bg-secondary
-            {% else %}bg-success{% endif %}">
-            {{ t.dpd_current }} ngày
-          </span>
-        </td>
-        <td class="text-end">{{ "{:,.0f}".format(t.total_outstanding) }}</td>
-        <td>
-          {% set channel_icons = {'EMAIL': 'bi-envelope', 'SMS': 'bi-chat-text', 'CALL': 'bi-telephone', 'FIELD': 'bi-geo-alt'} %}
-          <i class="bi {{ channel_icons.get(t.assigned_channel, 'bi-question') }}"></i>
-          {{ t.assigned_channel }}
-        </td>
-        <td class="fw-bold text-danger">{{ "%.1f"|format(t.risk_score) }}</td>
-        <td>
-          <select class="form-select form-select-sm status-select"
-                  data-task-id="{{ t.task_id }}"
-                  onchange="updateStatus({{ t.task_id }}, this.value)">
-            <option value="PENDING"     {% if t.task_status == 'PENDING'     %}selected{% endif %}>⏳ Chờ</option>
-            <option value="IN_PROGRESS" {% if t.task_status == 'IN_PROGRESS' %}selected{% endif %}>🔄 Đang xử lý</option>
-            <option value="DONE"        {% if t.task_status == 'DONE'        %}selected{% endif %}>✅ Xong</option>
-            <option value="SKIPPED"     {% if t.task_status == 'SKIPPED'     %}selected{% endif %}>⏭ Bỏ qua</option>
-          </select>
-        </td>
-        <td>
-          <button class="btn btn-sm btn-outline-secondary"
-                  onclick="showDetail({{ t.task_id }})">
-            <i class="bi bi-eye"></i>
-          </button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div id="task-list" class="d-flex flex-column gap-3">
+  {% for t in tasks %}
+    {# Determine DPD class #}
+    {% if t.dpd_current == 0 %}
+      {% set dpd_cls = 'dpd-ok' %}
+    {% elif t.dpd_current < 10 %}
+      {% set dpd_cls = 'dpd-a' %}
+    {% elif t.dpd_current < 20 %}
+      {% set dpd_cls = 'dpd-b' %}
+    {% elif t.dpd_current < 30 %}
+      {% set dpd_cls = 'dpd-c' %}
+    {% else %}
+      {% set dpd_cls = 'dpd-d' %}
+    {% endif %}
+
+    {# Channel icon map #}
+    {% set ch_icon = {'EMAIL': 'bi-envelope-fill', 'SMS': 'bi-chat-text-fill',
+                      'CALL': 'bi-telephone-fill', 'FIELD': 'bi-geo-alt-fill'} %}
+
+    <div class="card task-card {{ dpd_cls }}" id="card-{{ t.task_id }}">
+      <div class="dpd-strip"></div>
+      <div class="card-body py-3 ps-4">
+        <div class="row align-items-center g-2">
+
+          {# Priority rank #}
+          <div class="col-auto">
+            <div class="priority-rank {% if t.priority_rank <= 3 %}top3{% elif t.priority_rank <= 10 %}top10{% endif %}">
+              #{{ t.priority_rank }}
+            </div>
+          </div>
+
+          {# Customer info #}
+          <div class="col">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <strong class="fs-6">{{ t.customer_name }}</strong>
+              <span class="badge {% if t.product_source == 'COREBANK' %}bg-success{% else %}bg-info text-dark{% endif %} rounded-pill">
+                {{ t.product_source }}
+              </span>
+              <span class="channel-badge channel-{{ t.assigned_channel }}">
+                <i class="bi {{ ch_icon.get(t.assigned_channel, 'bi-question') }}"></i>
+                {{ t.assigned_channel }}
+              </span>
+            </div>
+            <div class="task-meta d-flex align-items-center gap-3 mt-1 flex-wrap">
+              <span class="text-muted small">
+                <i class="bi bi-phone"></i>
+                <a href="tel:{{ t.phone }}" class="text-decoration-none text-muted">{{ t.phone }}</a>
+              </span>
+              <span class="text-muted small">
+                <i class="bi bi-file-text"></i>
+                <code>{{ t.contract_no }}</code>
+              </span>
+              <span class="text-muted small">
+                <i class="bi bi-building"></i> {{ t.branch_name if t.branch_name is defined else t.product_code }}
+              </span>
+            </div>
+          </div>
+
+          {# DPD + outstanding #}
+          <div class="col-auto text-center d-none d-md-block">
+            <span class="dpd-badge {{ dpd_cls }} d-block mb-1">{{ t.dpd_current }} ngày</span>
+            <small class="text-muted" style="font-size:0.72rem">DPD</small>
+          </div>
+          <div class="col-auto text-end d-none d-md-block">
+            <div class="fw-bold" style="font-size:0.95rem">
+              {{ "{:,.0f}".format(t.total_outstanding / 1e6) }}M
+            </div>
+            <small class="text-muted" style="font-size:0.72rem">Dư nợ VNĐ</small>
+          </div>
+          <div class="col-auto text-center d-none d-md-block">
+            <div class="fw-bold text-danger" style="font-size:0.95rem">{{ "%.1f"|format(t.risk_score) }}</div>
+            <small class="text-muted" style="font-size:0.72rem">Risk</small>
+          </div>
+
+          {# Status + detail #}
+          <div class="col-auto d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm status-select"
+                    id="status-{{ t.task_id }}"
+                    data-task-id="{{ t.task_id }}"
+                    onchange="updateStatus({{ t.task_id }}, this.value, this)">
+              <option value="PENDING"     {% if t.task_status == 'PENDING'     %}selected{% endif %}>⏳ Chờ</option>
+              <option value="IN_PROGRESS" {% if t.task_status == 'IN_PROGRESS' %}selected{% endif %}>🔄 Đang xử lý</option>
+              <option value="DONE"        {% if t.task_status == 'DONE'        %}selected{% endif %}>✅ Xong</option>
+              <option value="SKIPPED"     {% if t.task_status == 'SKIPPED'     %}selected{% endif %}>⏭ Bỏ qua</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary rounded-3"
+                    onclick="showDetail({{ t.task_id }})"
+                    title="Chi tiết">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+
+        </div>
+
+        {# Mobile-only: DPD + outstanding inline #}
+        <div class="d-flex d-md-none gap-3 mt-2 flex-wrap">
+          <span class="dpd-badge {{ dpd_cls }}">{{ t.dpd_current }} ngày DPD</span>
+          <span class="text-muted small">{{ "{:,.0f}".format(t.total_outstanding / 1e6) }}M VNĐ dư nợ</span>
+          <span class="text-danger small fw-bold">Risk: {{ "%.1f"|format(t.risk_score) }}</span>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
 </div>
 {% endif %}
 
-<!-- Detail Modal -->
+{# ── Detail Modal ────────────────────────────────────── #}
 <div class="modal fade" id="detailModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-person-lines-fill"></i> Chi Tiết Khách Hàng</h5>
+        <h5 class="modal-title">
+          <i class="bi bi-person-lines-fill"></i> Chi Tiết Khách Hàng
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="detail-body">
-        <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary"></div>
+          <p class="text-muted mt-2 small">Đang tải...</p>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+{# ── Toast container ─────────────────────────────────── #}
+<div class="toast-container" id="toast-container"></div>
 {% endblock %}
 
 {% block scripts %}

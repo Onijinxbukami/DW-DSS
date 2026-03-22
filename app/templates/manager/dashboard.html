@@ -5,89 +5,117 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h5 class="fw-bold mb-0">
     <i class="bi bi-speedometer2 text-primary"></i> Dashboard Tổng Quan
   </h5>
-  <small class="text-muted">Snapshot: {{ snapshot_date }}</small>
+  <span class="badge bg-secondary rounded-pill">
+    <i class="bi bi-calendar3"></i> Snapshot: {{ snapshot_date }}
+  </span>
 </div>
 
-<!-- KPI Cards -->
+{# ── KPI Cards ──────────────────────────────────────── #}
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card border-0 shadow-sm text-white bg-danger">
-      <div class="card-body d-flex align-items-center gap-3">
-        <i class="bi bi-exclamation-triangle fs-2"></i>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card text-white" style="background: linear-gradient(135deg,#dc3545,#a71d2a)">
+      <div class="card-body d-flex align-items-center justify-content-between p-3">
         <div>
-          <div class="fs-3 fw-bold">{{ "{:,}".format(kpi_overdue) }}</div>
-          <div class="small opacity-75">Hợp đồng đang quá hạn</div>
+          <div class="kpi-value">{{ "{:,}".format(kpi_overdue) }}</div>
+          <div class="kpi-label">Hợp đồng quá hạn</div>
         </div>
+        <i class="bi bi-exclamation-triangle kpi-icon"></i>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card border-0 shadow-sm text-white bg-warning">
-      <div class="card-body d-flex align-items-center gap-3">
-        <i class="bi bi-currency-exchange fs-2"></i>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card text-dark" style="background: linear-gradient(135deg,#ffc107,#e0a800)">
+      <div class="card-body d-flex align-items-center justify-content-between p-3">
         <div>
-          <div class="fs-5 fw-bold">{{ "{:,.0f}".format(kpi_outstanding / 1e9) }}B</div>
-          <div class="small opacity-75">Tổng dư nợ quá hạn (VNĐ)</div>
+          <div class="kpi-value" style="font-size:1.6rem">{{ "{:,.1f}".format(kpi_outstanding / 1e9) }}B</div>
+          <div class="kpi-label">Dư nợ quá hạn (VNĐ)</div>
         </div>
+        <i class="bi bi-currency-exchange kpi-icon"></i>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card border-0 shadow-sm text-white bg-success">
-      <div class="card-body d-flex align-items-center gap-3">
-        <i class="bi bi-check-circle fs-2"></i>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card text-white" style="background: linear-gradient(135deg,#198754,#0d6e44)">
+      <div class="card-body d-flex align-items-center justify-content-between p-3">
         <div>
-          <div class="fs-3 fw-bold">{{ kpi_done_pct }}%</div>
-          <div class="small opacity-75">Task đã hoàn thành</div>
+          <div class="kpi-value">{{ kpi_done_pct }}%</div>
+          <div class="kpi-label">Task hoàn thành</div>
         </div>
+        <i class="bi bi-check-circle kpi-icon"></i>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card border-0 shadow-sm text-white bg-primary">
-      <div class="card-body d-flex align-items-center gap-3">
-        <i class="bi bi-people fs-2"></i>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card text-white" style="background: linear-gradient(135deg,#0d6efd,#0843a1)">
+      <div class="card-body d-flex align-items-center justify-content-between p-3">
         <div>
-          <div class="fs-3 fw-bold">{{ kpi_active_collectors }}</div>
-          <div class="small opacity-75">Collector đang hoạt động</div>
+          <div class="kpi-value">{{ kpi_active_collectors }}</div>
+          <div class="kpi-label">Collector hoạt động</div>
         </div>
+        <i class="bi bi-people kpi-icon"></i>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Charts Row -->
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold">
+{# ── Charts Row 1: DPD Bucket + Channel ─────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-md-7">
+    <div class="card chart-card h-100">
+      <div class="card-header">
         <i class="bi bi-bar-chart text-primary"></i> Phân Bố DPD Bucket
+        <span class="text-muted small fw-normal ms-2">A=1–9 · B=10–19 · C=20–29 · D≥30</span>
       </div>
       <div class="card-body">
-        <canvas id="bucketChart" height="200"></canvas>
+        <canvas id="bucketChart" height="180"></canvas>
       </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white fw-semibold">
+  <div class="col-md-5">
+    <div class="card chart-card h-100">
+      <div class="card-header">
         <i class="bi bi-pie-chart text-primary"></i> Phân Bố Kênh Liên Lạc
       </div>
-      <div class="card-body">
+      <div class="card-body d-flex align-items-center justify-content-center">
         <canvas id="channelChart" height="200"></canvas>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Collector Performance Table -->
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white fw-semibold">
-    <i class="bi bi-table text-primary"></i> Hiệu Suất Collector
+{# ── Charts Row 2: Risk Score Histogram + Task Status ── #}
+<div class="row g-3 mb-3">
+  <div class="col-md-7">
+    <div class="card chart-card h-100">
+      <div class="card-header">
+        <i class="bi bi-graph-up text-danger"></i> Phân Bố Risk Score
+      </div>
+      <div class="card-body">
+        <canvas id="riskChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="card chart-card h-100">
+      <div class="card-header">
+        <i class="bi bi-pie-chart-fill text-success"></i> Trạng Thái Task Hôm Nay
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="statusChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Collector Performance Table ─────────────────────── #}
+<div class="card chart-card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-table text-primary"></i> Hiệu Suất Collector</span>
+    <span class="text-muted small">Sắp xếp theo số task hoàn thành</span>
   </div>
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
@@ -96,23 +124,27 @@
           <th>Collector</th>
           <th class="text-center">Được giao</th>
           <th class="text-center">Đang xử lý</th>
-          <th class="text-center">Hoàn thành</th>
-          <th class="text-center">Bỏ qua</th>
-          <th>Tiến độ</th>
+          <th class="text-center text-success">Hoàn thành</th>
+          <th class="text-center text-secondary">Bỏ qua</th>
+          <th style="min-width:160px">Tiến độ</th>
         </tr>
       </thead>
       <tbody>
-        {% for r in perf_rows %}
+        {% for r in perf_rows | sort(attribute='done', reverse=True) %}
         <tr>
-          <td>{{ r.collector_name or '(Chưa giao)' }}</td>
+          <td class="fw-semibold">{{ r.collector_name or '(Chưa giao)' }}</td>
           <td class="text-center">{{ r.assigned }}</td>
-          <td class="text-center text-info">{{ r.in_progress }}</td>
+          <td class="text-center text-info fw-semibold">{{ r.in_progress }}</td>
           <td class="text-center text-success fw-bold">{{ r.done }}</td>
           <td class="text-center text-secondary">{{ r.skipped }}</td>
-          <td style="min-width:140px">
+          <td>
             {% set pct = (r.done / r.assigned * 100)|int if r.assigned else 0 %}
-            <div class="progress" style="height:18px">
-              <div class="progress-bar bg-success" style="width:{{ pct }}%">{{ pct }}%</div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:10px">
+                <div class="progress-bar {% if pct >= 80 %}bg-success{% elif pct >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width:{{ pct }}%"></div>
+              </div>
+              <span class="text-muted small" style="min-width:30px">{{ pct }}%</span>
             </div>
           </td>
         </tr>
@@ -125,8 +157,10 @@
 
 {% block scripts %}
 <script>
-  const bucketRaw  = {{ bucket_data | safe }};
+  const bucketRaw  = {{ bucket_data  | safe }};
   const channelRaw = {{ channel_data | safe }};
+  const riskRaw    = {{ risk_data    | safe }};
+  const statusRaw  = {{ status_data  | safe }};
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
