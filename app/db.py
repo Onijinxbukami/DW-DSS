@@ -67,6 +67,13 @@ def get_db() -> PgConn:
     do not need to be URL-encoded.
     """
     db_password = os.environ.get("DB_PASSWORD")
+    keepalive_kwargs = {
+        "keepalives": 1,
+        "keepalives_idle": 10,
+        "keepalives_interval": 5,
+        "keepalives_count": 3,
+        "connect_timeout": 10,
+    }
     if db_password:
         p = urlparse(DATABASE_URL)
         raw = psycopg2.connect(
@@ -76,9 +83,10 @@ def get_db() -> PgConn:
             user=p.username,
             password=db_password,
             sslmode="require",
+            **keepalive_kwargs,
         )
     else:
-        raw = psycopg2.connect(DATABASE_URL, sslmode="require")
+        raw = psycopg2.connect(DATABASE_URL, sslmode="require", **keepalive_kwargs)
     return PgConn(raw)
 
 

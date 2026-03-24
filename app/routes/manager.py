@@ -19,32 +19,25 @@ manager_bp = Blueprint("manager", __name__)
 def dashboard():
     conn = get_db()
 
-    kpi_overdue = conn.execute(
-        "SELECT COUNT(DISTINCT contract_no) AS n FROM dm_daily_collection_tasks "
-        "WHERE dpd_current > 0 AND snapshot_date = %s", (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 0
-
-    kpi_outstanding = int(conn.execute(
-        "SELECT COALESCE(SUM(total_outstanding),0) AS n FROM dm_daily_collection_tasks "
-        "WHERE dpd_current > 0 AND snapshot_date = %s", (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 0)
-
-    total_tasks = conn.execute(
-        "SELECT COUNT(*) AS n FROM dm_daily_collection_tasks WHERE snapshot_date = %s",
+    # Single round-trip for all KPIs
+    row = conn.execute(
+        """SELECT
+             COUNT(DISTINCT CASE WHEN dpd_current > 0 THEN contract_no END)          AS kpi_overdue,
+             COALESCE(SUM(CASE WHEN dpd_current > 0 THEN total_outstanding END), 0)   AS kpi_outstanding,
+             COUNT(*)                                                                   AS total_tasks,
+             SUM(CASE WHEN task_status = 'DONE' THEN 1 ELSE 0 END)                   AS done_tasks,
+             COUNT(DISTINCT CASE WHEN collector_sk IS NOT NULL THEN collector_sk END)  AS kpi_active_collectors
+           FROM dm_daily_collection_tasks
+           WHERE snapshot_date = %s""",
         (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 1
+    ).fetchone()
 
-    done_tasks = conn.execute(
-        "SELECT COUNT(*) AS n FROM dm_daily_collection_tasks "
-        "WHERE task_status='DONE' AND snapshot_date = %s", (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 0
-
-    kpi_done_pct = round(100.0 * done_tasks / total_tasks, 1) if total_tasks else 0
-
-    kpi_active_collectors = conn.execute(
-        "SELECT COUNT(DISTINCT collector_sk) AS n FROM dm_daily_collection_tasks "
-        "WHERE snapshot_date = %s AND collector_sk IS NOT NULL", (SNAPSHOT_DATE,)
-    ).fetchone()["n"] or 0
+    kpi_overdue           = row["kpi_overdue"] or 0
+    kpi_outstanding       = int(row["kpi_outstanding"] or 0)
+    total_tasks           = row["total_tasks"] or 1
+    done_tasks            = row["done_tasks"] or 0
+    kpi_done_pct          = round(100.0 * done_tasks / total_tasks, 1)
+    kpi_active_collectors = row["kpi_active_collectors"] or 0
 
     # DPD bucket distribution
     bucket_rows = conn.execute(
