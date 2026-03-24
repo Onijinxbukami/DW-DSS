@@ -196,6 +196,56 @@ def build_mart(snapshot_date: str | None = None, conn=None):
     return n
 
 
+def update_scores_only(snapshot_date: str, weights: dict, config_id: int, conn=None):
+    """
+    Lightweight alternative to build_mart() used by whatif_apply().
+    Re-computes risk_score + priority_rank in-memory and issues a single
+    bulk UPDATE — no DELETE/INSERT, far less Disk IO.
+    """
+    close_conn = False
+    if conn is None:
+        conn = get_db_conn()
+        close_conn = True
+
+    tasks_df = pd.read_sql_query(
+        "SELECT task_id, num_overdue_6m, max_dpd_6m, dpd_current, "
+        "total_outstanding, product_source "
+        "FROM dm_daily_collection_tasks WHERE snapshot_date = %s",
+        conn.raw,
+        params=(snapshot_date,),
+    )
+
+    if tasks_df.empty:
+        if close_conn:
+            conn.close()
+        return 0
+
+    tasks_df = compute_risk_scores(tasks_df, weights)
+
+    rows = [
+        (float(r["risk_score"]), int(r["priority_rank"]), config_id, int(r["task_id"]))
+        for _, r in tasks_df.iterrows()
+    ]
+
+    psycopg2.extras.execute_values(
+        conn.raw.cursor(),
+        """UPDATE dm_daily_collection_tasks AS t SET
+               risk_score    = v.risk_score,
+               priority_rank = v.priority_rank,
+               config_id     = v.config_id
+           FROM (VALUES %s) AS v(risk_score, priority_rank, config_id, task_id)
+           WHERE t.task_id = v.task_id""",
+        rows,
+        template="(%s::float, %s::int, %s::int, %s::int)",
+        page_size=2000,
+    )
+    conn.commit()
+
+    if close_conn:
+        conn.close()
+    return len(rows)
+
+
 if __name__ == "__main__":
     snapshot = sys.argv[1] if len(sys.argv) > 1 else None
     build_mart(snapshot)

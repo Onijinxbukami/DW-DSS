@@ -152,7 +152,10 @@ def whatif_preview():
 
     conn = get_db()
     tasks = pd.read_sql_query(
-        "SELECT * FROM dm_daily_collection_tasks WHERE snapshot_date = %s",
+        """SELECT task_id, customer_name, contract_no, dpd_current, total_outstanding,
+                  product_source, num_overdue_6m, max_dpd_6m,
+                  risk_score, priority_rank, assigned_channel
+           FROM dm_daily_collection_tasks WHERE snapshot_date = %s""",
         conn.raw,
         params=(SNAPSHOT_DATE,)
     )
@@ -200,7 +203,7 @@ def whatif_preview():
 @manager_bp.route("/whatif/apply", methods=["POST"])
 @login_required(role="manager")
 def whatif_apply():
-    from mart.build_mart import build_mart
+    from mart.build_mart import update_scores_only
 
     data    = request.get_json()
     alpha   = float(data.get("alpha",   20))
@@ -209,6 +212,8 @@ def whatif_apply():
     delta   = float(data.get("delta",   10))
     epsilon = float(data.get("epsilon", 5))
     desc    = data.get("description", "Applied via What-If UI")
+    weights = {"alpha": alpha, "beta": beta, "gamma": gamma,
+               "delta": delta, "epsilon": epsilon}
 
     conn = get_db()
     conn.execute(
@@ -224,7 +229,7 @@ def whatif_apply():
         "SELECT MAX(config_id) AS n FROM scoring_config"
     ).fetchone()["n"]
 
-    n = build_mart(SNAPSHOT_DATE, conn)
+    n = update_scores_only(SNAPSHOT_DATE, weights, new_config_id, conn)
     conn.close()
 
     return jsonify({
